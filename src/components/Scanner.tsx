@@ -12,6 +12,7 @@ interface ScannerProps {
   availableCameras: MediaDeviceInfo[];
   selectedCameraId: string;
   onCameraChange: (cameraId: string) => void;
+  onCamerasDetected: (cameras: MediaDeviceInfo[]) => void;
 }
 
 export default function Scanner({
@@ -22,6 +23,7 @@ export default function Scanner({
   availableCameras,
   selectedCameraId,
   onCameraChange,
+  onCamerasDetected,
 }: ScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
@@ -97,6 +99,7 @@ export default function Scanner({
           (device) => device.kind === "videoinput"
         );
         console.log("Available cameras:", videoDevices);
+        onCamerasDetected(videoDevices);
 
         let deviceId = selectedCameraId;
 

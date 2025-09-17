@@ -48,7 +48,9 @@ export default function App() {
   const [cameraPermission, setCameraPermission] = useState<
     "granted" | "denied" | "prompt" | "unknown"
   >("unknown");
-  const [availableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>(
+    []
+  );
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [recentScans, setRecentScans] = useState<Set<string>>(new Set());
 
@@ -256,6 +258,7 @@ export default function App() {
             availableCameras={availableCameras}
             selectedCameraId={selectedCameraId}
             onCameraChange={handleCameraChange}
+            onCamerasDetected={setAvailableCameras}
           />
 
           <div className="border rounded-xl p-2 sm:p-4 bg-white w-full">
@@ -330,7 +333,6 @@ export default function App() {
             boxes={boxes}
             activeBoxId={activeBoxId}
             onBoxSelect={setActiveBoxId}
-            onAddBox={addBox}
             onRenameBox={renameBox}
             onClearBox={clearBox}
             itemsByBox={itemsByBox}

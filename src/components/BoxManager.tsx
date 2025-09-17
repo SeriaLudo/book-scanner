@@ -1,5 +1,3 @@
-import React from "react";
-
 interface Box {
   id: string;
   name: string;
@@ -9,7 +7,6 @@ interface BoxManagerProps {
   boxes: Box[];
   activeBoxId: string;
   onBoxSelect: (boxId: string) => void;
-  onAddBox: () => void;
   onRenameBox: (id: string, name: string) => void;
   onClearBox: (id: string) => void;
   itemsByBox: Map<string, any[]>;
@@ -19,7 +16,6 @@ export default function BoxManager({
   boxes,
   activeBoxId,
   onBoxSelect,
-  onAddBox,
   onRenameBox,
   onClearBox,
   itemsByBox,
