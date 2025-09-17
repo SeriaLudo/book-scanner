@@ -30,6 +30,33 @@ interface Box {
 // --- Helpers ---
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+function playBeep() {
+  try {
+    // Create a simple beep sound using Web Audio API
+    const audioContext = new (window.AudioContext ||
+      (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz beep
+    oscillator.type = "sine";
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.1
+    );
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  } catch (e) {
+    console.log("Could not play beep sound:", e);
+  }
+}
+
 async function fetchBookByISBN(
   isbnRaw: string
 ): Promise<{ title: string; authors: string[] } | null> {
@@ -119,6 +146,7 @@ export default function App() {
     []
   );
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [recentScans, setRecentScans] = useState<Set<string>>(new Set());
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<any>(null);
@@ -216,9 +244,12 @@ export default function App() {
 
         let deviceId = selectedCameraId;
 
-        // If no camera selected, use the first available
+        // If no camera selected, use the second camera (back camera) if available, otherwise first
         if (!deviceId && videoDevices.length > 0) {
-          deviceId = videoDevices[0].deviceId;
+          deviceId =
+            videoDevices.length > 1
+              ? videoDevices[1].deviceId
+              : videoDevices[0].deviceId;
         }
 
         if (!deviceId) {
@@ -282,6 +313,23 @@ export default function App() {
   async function handleScanned(raw: string) {
     const isbn = raw.replace(/[^0-9Xx]/g, "");
     if (!isbn) return;
+
+    // Check if this ISBN was recently scanned (within last 5 seconds)
+    if (recentScans.has(isbn)) {
+      console.log("Duplicate scan ignored:", isbn);
+      return;
+    }
+
+    // Add to recent scans and set timeout to remove it
+    setRecentScans((prev) => new Set([...prev, isbn]));
+    setTimeout(() => {
+      setRecentScans((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(isbn);
+        return newSet;
+      });
+    }, 5000); // Remove after 5 seconds
+
     await addISBN(isbn);
   }
 
@@ -364,6 +412,9 @@ export default function App() {
     };
     setItems((xs) => [item, ...xs]);
     setStatus(`Added ${meta.title}`);
+
+    // Play beep sound for successful scan
+    playBeep();
   }
 
   function addBox() {
