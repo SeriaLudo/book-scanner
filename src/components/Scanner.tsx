@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { normalizeISBN } from "../utils/scannerUtils";
 
@@ -28,7 +28,6 @@ export default function Scanner({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<any>(null);
-  const [lastScan, setLastScan] = useState<string>("");
 
   // Check camera permissions on load
   useEffect(() => {
@@ -131,8 +130,7 @@ export default function Scanner({
           (result) => {
             if (result) {
               const text = result.getText();
-              if (text && text !== lastScan) {
-                setLastScan(text);
+              if (text) {
                 handleScanned(text);
               }
             }

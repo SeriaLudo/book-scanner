@@ -5,13 +5,7 @@ import Scanner from "./components/Scanner";
 import BookList from "./components/BookList";
 import BoxManager from "./components/BoxManager";
 import PrintLabel from "./components/PrintLabel";
-import {
-  playBeep,
-  fetchBookByISBN,
-  normalizeISBN,
-  checkDuplicateScan,
-  addToRecentScans,
-} from "./utils/scannerUtils";
+import { playBeep, fetchBookByISBN, normalizeISBN } from "./utils/scannerUtils";
 import { uid, downloadBlob, classNames } from "./utils/generalUtils";
 
 // Minimal one-file React app:
@@ -52,7 +46,6 @@ export default function App() {
     []
   );
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
-  const [recentScans, setRecentScans] = useState<Set<string>>(new Set());
 
   // Persist locally
   useEffect(() => {
@@ -78,14 +71,19 @@ export default function App() {
     const isbn = normalizeISBN(raw);
     if (!isbn) return;
 
-    // Check if this ISBN was recently scanned (within last 5 seconds)
-    if (checkDuplicateScan(isbn, recentScans)) {
-      console.log("Duplicate scan ignored:", isbn);
+    // Check if this ISBN already exists in the current box
+    const existingInBox = items.find(
+      (item) => item.isbn === isbn && item.boxId === activeBoxId
+    );
+
+    if (existingInBox) {
+      setStatus(
+        `"${existingInBox.title}" is already in ${
+          boxes.find((b) => b.id === activeBoxId)?.name || "this box"
+        }`
+      );
       return;
     }
-
-    // Add to recent scans and set timeout to remove it
-    addToRecentScans(isbn, setRecentScans, 5000);
 
     await addISBN(isbn);
   }
@@ -105,10 +103,13 @@ export default function App() {
       boxId: activeBoxId,
     };
     setItems((xs) => [item, ...xs]);
-    setStatus(`Added ${meta.title}`);
+    setStatus(`Added ${meta.title} - Scanner stopped`);
 
     // Play beep sound for successful scan
     playBeep();
+
+    // Stop scanner after successful scan
+    setScanning(false);
   }
 
   function addBox() {
@@ -213,7 +214,7 @@ export default function App() {
                   ? "Stop"
                   : cameraPermission === "denied"
                   ? "Camera Denied"
-                  : "Start"}
+                  : "Start Scanner"}
               </button>
               <button
                 onClick={addBox}
@@ -308,7 +309,24 @@ export default function App() {
                 onChange={(e) => setManualISBN(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && manualISBN.trim()) {
-                    addISBN(manualISBN.trim());
+                    const isbn = normalizeISBN(manualISBN.trim());
+                    if (isbn) {
+                      // Check if this ISBN already exists in the current box
+                      const existingInBox = items.find(
+                        (item) =>
+                          item.isbn === isbn && item.boxId === activeBoxId
+                      );
+                      if (existingInBox) {
+                        setStatus(
+                          `"${existingInBox.title}" is already in ${
+                            boxes.find((b) => b.id === activeBoxId)?.name ||
+                            "this box"
+                          }`
+                        );
+                      } else {
+                        addISBN(isbn);
+                      }
+                    }
                     setManualISBN("");
                   }
                 }}
@@ -318,7 +336,24 @@ export default function App() {
               <button
                 onClick={() => {
                   if (manualISBN.trim()) {
-                    addISBN(manualISBN.trim());
+                    const isbn = normalizeISBN(manualISBN.trim());
+                    if (isbn) {
+                      // Check if this ISBN already exists in the current box
+                      const existingInBox = items.find(
+                        (item) =>
+                          item.isbn === isbn && item.boxId === activeBoxId
+                      );
+                      if (existingInBox) {
+                        setStatus(
+                          `"${existingInBox.title}" is already in ${
+                            boxes.find((b) => b.id === activeBoxId)?.name ||
+                            "this box"
+                          }`
+                        );
+                      } else {
+                        addISBN(isbn);
+                      }
+                    }
                     setManualISBN("");
                   }
                 }}
