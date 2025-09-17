@@ -46,6 +46,18 @@ export default function App() {
     []
   );
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [viewingBoxId, setViewingBoxId] = useState<string | null>(null);
+
+  // Handle URL routing
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith("/box/")) {
+      const boxId = path.split("/box/")[1];
+      setViewingBoxId(boxId);
+    } else {
+      setViewingBoxId(null);
+    }
+  }, []);
 
   // Persist locally
   useEffect(() => {
@@ -56,7 +68,13 @@ export default function App() {
         if (parsed.items) setItems(parsed.items);
         if (parsed.boxes) setBoxes(parsed.boxes);
         if (parsed.activeBoxId) setActiveBoxId(parsed.activeBoxId);
-      } catch {}
+      } catch (error) {
+        alert(
+          `Error loading saved data: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      }
     }
   }, []);
 
@@ -167,7 +185,11 @@ export default function App() {
           setActiveBoxId(data.boxes?.[0]?.id || "BOX-1");
         }
       } catch (err) {
-        alert("Invalid JSON");
+        alert(
+          `Invalid JSON: ${
+            err instanceof Error ? err.message : "Unknown error"
+          }`
+        );
       }
     };
     reader.readAsText(file);
@@ -184,14 +206,11 @@ export default function App() {
       console.log(`Processing box ${box.name} with ${items.length} items`);
       if (items.length === 0) continue;
 
+      // Create a simple payload with just the box ID and a URL
       const payload = {
         boxId: box.id,
         name: box.name,
-        items: items.map((it) => ({
-          isbn: it.isbn,
-          title: it.title,
-          a: it.authors,
-        })),
+        url: `${window.location.origin}/box/${box.id}`,
         v: 1,
       };
       const text = JSON.stringify(payload);
@@ -244,31 +263,49 @@ export default function App() {
         const svgUrl = URL.createObjectURL(svgBlob);
 
         img.onload = () => {
-          canvas.width = 384;
-          canvas.height = 256;
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, 384, 256);
-          }
-
-          canvas.toBlob((pngBlob) => {
-            if (pngBlob) {
-              const pngUrl = URL.createObjectURL(pngBlob);
-              const a = document.createElement("a");
-              a.href = pngUrl;
-              a.download = `${box.name.replace(
-                /[^a-zA-Z0-9]/g,
-                "_"
-              )}_label.png`;
-              a.style.display = "none";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(pngUrl);
-              URL.revokeObjectURL(svgUrl);
-              document.body.removeChild(tempDiv);
-              console.log(`Downloaded ${box.name}_label.png`);
+          try {
+            canvas.width = 384;
+            canvas.height = 256;
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, 384, 256);
             }
-          }, "image/png");
+
+            canvas.toBlob((pngBlob) => {
+              if (pngBlob) {
+                const pngUrl = URL.createObjectURL(pngBlob);
+                const a = document.createElement("a");
+                a.href = pngUrl;
+                a.download = `${box.name.replace(
+                  /[^a-zA-Z0-9]/g,
+                  "_"
+                )}_label.png`;
+                a.style.display = "none";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(pngUrl);
+                URL.revokeObjectURL(svgUrl);
+                document.body.removeChild(tempDiv);
+                console.log(`Downloaded ${box.name}_label.png`);
+              } else {
+                alert(`Failed to convert ${box.name} to PNG`);
+              }
+            }, "image/png");
+          } catch (error) {
+            alert(
+              `Error converting ${box.name} to PNG: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`
+            );
+            document.body.removeChild(tempDiv);
+            URL.revokeObjectURL(svgUrl);
+          }
+        };
+
+        img.onerror = () => {
+          alert(`Failed to load SVG for ${box.name}`);
+          document.body.removeChild(tempDiv);
+          URL.revokeObjectURL(svgUrl);
         };
 
         img.src = svgUrl;
@@ -280,6 +317,11 @@ export default function App() {
       } catch (error) {
         console.error(`Error generating QR code for ${box.name}:`, error);
         setStatus(`Error generating label for ${box.name}`);
+        alert(
+          `Error generating QR code for ${box.name}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
       }
     }
     console.log("SVG export completed");
@@ -292,6 +334,55 @@ export default function App() {
       setScanning(false);
       setTimeout(() => setScanning(true), 100);
     }
+  }
+
+  // Box viewer component for QR code scanning
+  if (viewingBoxId) {
+    const box = boxes.find((b) => b.id === viewingBoxId);
+    const boxItems = itemsByBox.get(viewingBoxId) || [];
+
+    return (
+      <div className="min-h-screen bg-gray-50 text-gray-900 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-3xl font-bold">
+                {box?.name || "Unknown Box"}
+              </h1>
+              <button
+                onClick={() => {
+                  window.history.pushState({}, "", "/");
+                  setViewingBoxId(null);
+                }}
+                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                ← Back to Scanner
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <span className="text-lg text-gray-600">
+                {boxItems.length} item{boxItems.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="grid gap-4">
+              {boxItems.map((item) => (
+                <div key={item.id} className="border rounded-lg p-4">
+                  <h3 className="font-semibold text-lg">{item.title}</h3>
+                  <p className="text-gray-600">ISBN: {item.isbn}</p>
+                  {item.authors.length > 0 && (
+                    <p className="text-sm text-gray-500">
+                      by {item.authors.join(", ")}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
