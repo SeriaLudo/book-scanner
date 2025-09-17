@@ -5,14 +5,6 @@ import Scanner from "./components/Scanner";
 import BookList from "./components/BookList";
 import BoxManager from "./components/BoxManager";
 import PrintLabel from "./components/PrintLabel";
-import {
-  playBeep,
-  fetchBookByISBN,
-  normalizeISBN,
-  checkDuplicateScan,
-  addToRecentScans,
-} from "./utils/scannerUtils";
-import { uid, downloadBlob, classNames } from "./utils/generalUtils";
 
 // Minimal one-file React app:
 // - Scan ISBN barcodes with the device camera (or type manually)
@@ -37,6 +29,109 @@ interface Box {
   name: string; // display name
 }
 
+// --- Helpers ---
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+function playBeep() {
+  try {
+    // Create a simple beep sound using Web Audio API
+    const audioContext = new (window.AudioContext ||
+      (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz beep
+    oscillator.type = "sine";
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.1
+    );
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  } catch (e) {
+    console.log("Could not play beep sound:", e);
+  }
+}
+
+async function fetchBookByISBN(
+  isbnRaw: string
+): Promise<{ title: string; authors: string[] } | null> {
+  // Normalize: strip spaces/dashes
+  const isbn = isbnRaw.replace(/[^0-9Xx]/g, "");
+  if (!isbn) return null;
+
+  // Try OpenLibrary Books API first (simple, CORS-friendly)
+  try {
+    const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("OpenLibrary error");
+    const data = await res.json();
+    const key = `ISBN:${isbn}`;
+    const entry = data[key];
+    if (entry) {
+      const title: string = entry.title || "Untitled";
+      const authors: string[] = Array.isArray(entry.authors)
+        ? entry.authors.map((a: any) => a.name).filter(Boolean)
+        : [];
+      return { title, authors };
+    }
+  } catch (e) {
+    console.warn("OpenLibrary jscmd=data fallback", e);
+  }
+
+  // Fallback: OpenLibrary works JSON (two-step)
+  try {
+    const worksRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+    if (!worksRes.ok) throw new Error("ISBN not found");
+    const worksJson = await worksRes.json();
+    let title = worksJson.title || "Untitled";
+    let authors: string[] = [];
+    if (Array.isArray(worksJson.authors) && worksJson.authors.length) {
+      const ids = worksJson.authors
+        .map((a: any) => a.key?.replace("/authors/", "").replace("/", ""))
+        .filter(Boolean);
+      const authorNames: string[] = [];
+      for (const id of ids) {
+        try {
+          const aRes = await fetch(
+            `https://openlibrary.org/authors/${id}.json`
+          );
+          if (aRes.ok) {
+            const aJson = await aRes.json();
+            if (aJson?.name) authorNames.push(aJson.name);
+          }
+        } catch {}
+      }
+      authors = authorNames;
+    }
+    return { title, authors };
+  } catch (e) {
+    console.warn("OpenLibrary fallback failed", e);
+  }
+
+  return null;
+}
+
+function downloadBlob(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function classNames(...xs: (string | false | null | undefined)[]) {
+  return xs.filter(Boolean).join(" ");
+}
+
 // --- Main Component ---
 export default function App() {
   const [items, setItems] = useState<BookItem[]>([]);
@@ -48,7 +143,9 @@ export default function App() {
   const [cameraPermission, setCameraPermission] = useState<
     "granted" | "denied" | "prompt" | "unknown"
   >("unknown");
-  const [availableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>(
+    []
+  );
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [recentScans, setRecentScans] = useState<Set<string>>(new Set());
 
@@ -73,17 +170,24 @@ export default function App() {
   }, [items, boxes, activeBoxId]);
 
   async function handleScanned(raw: string) {
-    const isbn = normalizeISBN(raw);
+    const isbn = raw.replace(/[^0-9Xx]/g, "");
     if (!isbn) return;
 
     // Check if this ISBN was recently scanned (within last 5 seconds)
-    if (checkDuplicateScan(isbn, recentScans)) {
+    if (recentScans.has(isbn)) {
       console.log("Duplicate scan ignored:", isbn);
       return;
     }
 
     // Add to recent scans and set timeout to remove it
-    addToRecentScans(isbn, setRecentScans, 5000);
+    setRecentScans((prev) => new Set([...prev, isbn]));
+    setTimeout(() => {
+      setRecentScans((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(isbn);
+        return newSet;
+      });
+    }, 5000); // Remove after 5 seconds
 
     await addISBN(isbn);
   }
