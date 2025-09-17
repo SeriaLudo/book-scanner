@@ -48,15 +48,30 @@ export default function App() {
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [viewingBoxId, setViewingBoxId] = useState<string | null>(null);
 
-  // Handle URL routing
+  // Handle URL routing (using hash for GitHub Pages compatibility)
   useEffect(() => {
-    const path = window.location.pathname;
-    if (path.startsWith("/box/")) {
-      const boxId = path.split("/box/")[1];
+    const hash = window.location.hash;
+    if (hash.startsWith("#/box/")) {
+      const boxId = hash.split("#/box/")[1];
       setViewingBoxId(boxId);
     } else {
       setViewingBoxId(null);
     }
+  }, []);
+
+  // Listen for hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith("#/box/")) {
+        const boxId = hash.split("#/box/")[1];
+        setViewingBoxId(boxId);
+      } else {
+        setViewingBoxId(null);
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   // Persist locally
@@ -206,14 +221,8 @@ export default function App() {
       console.log(`Processing box ${box.name} with ${items.length} items`);
       if (items.length === 0) continue;
 
-      // Create a simple payload with just the box ID and a URL
-      const payload = {
-        boxId: box.id,
-        name: box.name,
-        url: `${window.location.origin}/box/${box.id}`,
-        v: 1,
-      };
-      const text = JSON.stringify(payload);
+      // Create a simple URL for the QR code
+      const text = `${window.location.origin}#/box/${box.id}`;
       console.log(`Generating QR code for ${box.name}:`, text);
 
       try {
@@ -351,7 +360,7 @@ export default function App() {
               </h1>
               <button
                 onClick={() => {
-                  window.history.pushState({}, "", "/");
+                  window.location.hash = "";
                   setViewingBoxId(null);
                 }}
                 className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
