@@ -112,9 +112,33 @@ export default function App() {
   const [lastScan, setLastScan] = useState<string>("");
   const [manualISBN, setManualISBN] = useState("");
   const [status, setStatus] = useState<string>("");
+  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<any>(null);
+
+  // Check camera permissions on load
+  useEffect(() => {
+    const checkCameraPermission = async () => {
+      try {
+        if (navigator.permissions) {
+          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          setCameraPermission(permission.state);
+          
+          permission.onchange = () => {
+            setCameraPermission(permission.state);
+          };
+        } else {
+          setCameraPermission('unknown');
+        }
+      } catch (e) {
+        console.warn('Could not check camera permission:', e);
+        setCameraPermission('unknown');
+      }
+    };
+    
+    checkCameraPermission();
+  }, []);
 
   // Persist locally
   useEffect(() => {
@@ -154,6 +178,14 @@ export default function App() {
           return;
         }
 
+        // Request camera permission first
+        if (cameraPermission !== 'granted') {
+          const permissionGranted = await requestCameraPermission();
+          if (!permissionGranted) {
+            return;
+          }
+        }
+
         const devices = await BrowserMultiFormatReader.listVideoInputDevices();
         const deviceId = devices?.[0]?.deviceId;
         if (!deviceId) {
@@ -180,6 +212,7 @@ export default function App() {
       } catch (e: any) {
         console.error("Camera error:", e);
         if (e.name === "NotAllowedError") {
+          setCameraPermission('denied');
           setStatus(
             "Camera permission denied. Please allow camera access and try again."
           );
@@ -202,12 +235,35 @@ export default function App() {
       } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanning]);
+  }, [scanning, cameraPermission]);
 
   async function handleScanned(raw: string) {
     const isbn = raw.replace(/[^0-9Xx]/g, "");
     if (!isbn) return;
     await addISBN(isbn);
+  }
+
+  async function requestCameraPermission() {
+    try {
+      setStatus("Requesting camera permission...");
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Stop the stream immediately as we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      setCameraPermission('granted');
+      setStatus("Camera permission granted!");
+      return true;
+    } catch (e: any) {
+      console.error("Camera permission error:", e);
+      if (e.name === "NotAllowedError") {
+        setCameraPermission('denied');
+        setStatus("Camera permission denied. Please allow camera access in your browser settings and refresh the page.");
+      } else if (e.name === "NotFoundError") {
+        setStatus("No camera found. Please connect a camera and try again.");
+      } else {
+        setStatus("Camera error: " + (e?.message || e));
+      }
+      return false;
+    }
   }
 
   async function addISBN(isbn: string) {
@@ -330,10 +386,13 @@ export default function App() {
                   "px-0.5 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border min-h-[40px] sm:min-h-[44px] flex-shrink-0",
                   scanning
                     ? "bg-red-50 border-red-300 text-red-700"
+                    : cameraPermission === 'denied'
+                    ? "bg-gray-50 border-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-emerald-50 border-emerald-300 text-emerald-700"
                 )}
+                disabled={cameraPermission === 'denied' && !scanning}
               >
-                {scanning ? "Stop" : "Start"}
+                {scanning ? "Stop" : cameraPermission === 'denied' ? "Camera Denied" : "Start"}
               </button>
               <button
                 onClick={addBox}
@@ -381,6 +440,30 @@ export default function App() {
               ></video>
             </div>
             <p className="text-sm text-gray-600 mt-2">{status}</p>
+            
+            {/* Camera Permission Status */}
+            {cameraPermission === 'denied' && (
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">
+                  <strong>Camera access denied.</strong> Please allow camera access in your browser settings and refresh the page.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-medium"
+                >
+                  Refresh Page
+                </button>
+              </div>
+            )}
+            
+            {cameraPermission === 'prompt' && !scanning && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Camera permission needed.</strong> Click "Start" to request camera access.
+                </p>
+              </div>
+            )}
+            
             {status.includes("HTTPS") && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
