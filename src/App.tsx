@@ -112,7 +112,13 @@ export default function App() {
   const [lastScan, setLastScan] = useState<string>("");
   const [manualISBN, setManualISBN] = useState("");
   const [status, setStatus] = useState<string>("");
-  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+  const [cameraPermission, setCameraPermission] = useState<
+    "granted" | "denied" | "prompt" | "unknown"
+  >("unknown");
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>(
+    []
+  );
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<any>(null);
@@ -121,22 +127,36 @@ export default function App() {
   useEffect(() => {
     const checkCameraPermission = async () => {
       try {
+        // Debug information
+        console.log("Environment check:", {
+          protocol: location.protocol,
+          hostname: location.hostname,
+          userAgent: navigator.userAgent,
+          hasMediaDevices: !!navigator.mediaDevices,
+          hasPermissions: !!navigator.permissions,
+        });
+
         if (navigator.permissions) {
-          const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          const permission = await navigator.permissions.query({
+            name: "camera" as PermissionName,
+          });
+          console.log("Camera permission state:", permission.state);
           setCameraPermission(permission.state);
-          
+
           permission.onchange = () => {
+            console.log("Camera permission changed to:", permission.state);
             setCameraPermission(permission.state);
           };
         } else {
-          setCameraPermission('unknown');
+          console.log("Permissions API not available");
+          setCameraPermission("unknown");
         }
       } catch (e) {
-        console.warn('Could not check camera permission:', e);
-        setCameraPermission('unknown');
+        console.warn("Could not check camera permission:", e);
+        setCameraPermission("unknown");
       }
     };
-    
+
     checkCameraPermission();
   }, []);
 
@@ -179,19 +199,41 @@ export default function App() {
         }
 
         // Request camera permission first
-        if (cameraPermission !== 'granted') {
+        if (cameraPermission !== "granted") {
           const permissionGranted = await requestCameraPermission();
           if (!permissionGranted) {
             return;
           }
         }
 
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const deviceId = devices?.[0]?.deviceId;
+        // Use the standard MediaDevices API to enumerate cameras
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(
+          (device) => device.kind === "videoinput"
+        );
+        console.log("Available cameras:", videoDevices);
+        setAvailableCameras(videoDevices);
+
+        let deviceId = selectedCameraId;
+
+        // If no camera selected, use the first available
+        if (!deviceId && videoDevices.length > 0) {
+          deviceId = videoDevices[0].deviceId;
+        }
+
         if (!deviceId) {
           setStatus("No camera found. Please check permissions.");
           return;
         }
+
+        const selectedCamera = videoDevices.find(
+          (d) => d.deviceId === deviceId
+        );
+        console.log(
+          "Selected camera:",
+          selectedCamera?.label || `Camera ${deviceId.slice(0, 8)}`
+        );
+        setSelectedCameraId(deviceId);
 
         setStatus("Starting camera...");
         const controls = await reader.decodeFromVideoDevice(
@@ -212,7 +254,7 @@ export default function App() {
       } catch (e: any) {
         console.error("Camera error:", e);
         if (e.name === "NotAllowedError") {
-          setCameraPermission('denied');
+          setCameraPermission("denied");
           setStatus(
             "Camera permission denied. Please allow camera access and try again."
           );
@@ -246,19 +288,59 @@ export default function App() {
   async function requestCameraPermission() {
     try {
       setStatus("Requesting camera permission...");
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      console.log("Requesting camera permission...");
+
+      // Request basic camera permission (device selection happens later)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+
+      console.log("Camera stream obtained:", stream);
       // Stop the stream immediately as we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-      setCameraPermission('granted');
+      stream.getTracks().forEach((track) => {
+        console.log("Stopping track:", track.label);
+        track.stop();
+      });
+
+      setCameraPermission("granted");
       setStatus("Camera permission granted!");
       return true;
     } catch (e: any) {
       console.error("Camera permission error:", e);
+      console.error("Error details:", {
+        name: e.name,
+        message: e.message,
+        constraint: e.constraint,
+      });
+
       if (e.name === "NotAllowedError") {
-        setCameraPermission('denied');
-        setStatus("Camera permission denied. Please allow camera access in your browser settings and refresh the page.");
+        setCameraPermission("denied");
+        setStatus(
+          "Camera permission denied. Please allow camera access in your browser settings and refresh the page."
+        );
       } else if (e.name === "NotFoundError") {
         setStatus("No camera found. Please connect a camera and try again.");
+      } else if (e.name === "NotSupportedError") {
+        setStatus("Camera not supported. Please use HTTPS or localhost.");
+      } else if (e.name === "OverconstrainedError") {
+        setStatus(
+          "Camera constraints not supported. Trying with basic settings..."
+        );
+        // Try with basic constraints
+        try {
+          const basicStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          basicStream.getTracks().forEach((track) => track.stop());
+          setCameraPermission("granted");
+          setStatus("Camera permission granted!");
+          return true;
+        } catch (basicError: any) {
+          console.error("Basic camera request also failed:", basicError);
+          setStatus(
+            "Camera error: " + (basicError?.message || String(basicError))
+          );
+        }
       } else {
         setStatus("Camera error: " + (e?.message || e));
       }
@@ -386,13 +468,17 @@ export default function App() {
                   "px-0.5 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border min-h-[40px] sm:min-h-[44px] flex-shrink-0",
                   scanning
                     ? "bg-red-50 border-red-300 text-red-700"
-                    : cameraPermission === 'denied'
+                    : cameraPermission === "denied"
                     ? "bg-gray-50 border-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-emerald-50 border-emerald-300 text-emerald-700"
                 )}
-                disabled={cameraPermission === 'denied' && !scanning}
+                disabled={cameraPermission === "denied" && !scanning}
               >
-                {scanning ? "Stop" : cameraPermission === 'denied' ? "Camera Denied" : "Start"}
+                {scanning
+                  ? "Stop"
+                  : cameraPermission === "denied"
+                  ? "Camera Denied"
+                  : "Start"}
               </button>
               <button
                 onClick={addBox}
@@ -440,12 +526,37 @@ export default function App() {
               ></video>
             </div>
             <p className="text-sm text-gray-600 mt-2">{status}</p>
-            
+
+            {/* Camera Selection */}
+            {availableCameras.length > 1 && (
+              <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Camera:
+                </label>
+                <select
+                  value={selectedCameraId}
+                  onChange={(e) => setSelectedCameraId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                >
+                  {availableCameras.map((camera, index) => (
+                    <option key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label || `Camera ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Try different cameras to find the one facing away from you
+                  (for scanning books)
+                </p>
+              </div>
+            )}
+
             {/* Camera Permission Status */}
-            {cameraPermission === 'denied' && (
+            {cameraPermission === "denied" && (
               <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">
-                  <strong>Camera access denied.</strong> Please allow camera access in your browser settings and refresh the page.
+                  <strong>Camera access denied.</strong> Please allow camera
+                  access in your browser settings and refresh the page.
                 </p>
                 <button
                   onClick={() => window.location.reload()}
@@ -455,15 +566,16 @@ export default function App() {
                 </button>
               </div>
             )}
-            
-            {cameraPermission === 'prompt' && !scanning && (
+
+            {cameraPermission === "prompt" && !scanning && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Camera permission needed.</strong> Click "Start" to request camera access.
+                  <strong>Camera permission needed.</strong> Click "Start" to
+                  request camera access.
                 </p>
               </div>
             )}
-            
+
             {status.includes("HTTPS") && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
