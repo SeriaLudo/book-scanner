@@ -35,12 +35,13 @@ export default function PrintLabel({ box, items }: PrintLabelProps) {
         v: 1,
       };
       const text = JSON.stringify(payload);
-      const dataUrl = await QRCode.toDataURL(text, {
+      const svgString = await QRCode.toString(text, {
+        type: "svg",
         errorCorrectionLevel: "M",
         margin: 1,
         width: 256,
       });
-      setQrSrc(dataUrl);
+      setQrSrc(svgString);
     };
 
     generateQR();
@@ -56,10 +57,9 @@ export default function PrintLabel({ box, items }: PrintLabelProps) {
       </div>
       <div className="print:mt-2">
         {qrSrc ? (
-          <img
-            src={qrSrc}
-            alt={`QR for ${box.name}`}
-            className="print:w-16 print:h-16 print:object-contain w-16 h-16 object-contain"
+          <div
+            className="print:w-16 print:h-16 w-16 h-16"
+            dangerouslySetInnerHTML={{ __html: qrSrc }}
           />
         ) : (
           <div className="print:w-16 print:h-16 print:bg-gray-100 w-16 h-16 bg-gray-100" />

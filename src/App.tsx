@@ -173,8 +173,95 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  function printLabels() {
-    window.print();
+  async function exportSVGLabels() {
+    console.log("Starting SVG export...");
+    console.log("Boxes:", boxes);
+    console.log("Items by box:", itemsByBox);
+
+    for (const box of boxes) {
+      const items = itemsByBox.get(box.id) || [];
+      console.log(`Processing box ${box.name} with ${items.length} items`);
+      if (items.length === 0) continue;
+
+      const payload = {
+        boxId: box.id,
+        name: box.name,
+        items: items.map((it) => ({
+          isbn: it.isbn,
+          title: it.title,
+          a: it.authors,
+        })),
+        v: 1,
+      };
+      const text = JSON.stringify(payload);
+      console.log(`Generating QR code for ${box.name}:`, text);
+
+      try {
+        // Generate SVG QR code
+        const QRCode = (await import("qrcode")).default;
+        const svgString = await QRCode.toString(text, {
+          type: "svg",
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: 256,
+        });
+        console.log(`QR code generated for ${box.name}`);
+
+        // Create complete SVG label
+        const labelSVG = `
+        <svg width="384" height="288" xmlns="http://www.w3.org/2000/svg">
+          <rect width="384" height="288" fill="white" stroke="black" stroke-width="1"/>
+          <text x="192" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold">${
+            box.name
+          }</text>
+          <text x="192" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="14">${
+            items.length
+          } item${items.length === 1 ? "" : "s"}</text>
+          <g transform="translate(64, 80)">
+            ${svgString.replace("<svg", "<g").replace("</svg>", "</g>")}
+          </g>
+          <text x="20" y="200" font-family="Arial, sans-serif" font-size="10">Books:</text>
+          ${items
+            .slice(0, 8)
+            .map(
+              (it, i) =>
+                `<text x="20" y="${
+                  220 + i * 12
+                }" font-family="Arial, sans-serif" font-size="9">${i + 1}. ${
+                  it.title
+                }</text>`
+            )
+            .join("")}
+          ${
+            items.length > 8
+              ? `<text x="20" y="${
+                  220 + 8 * 12
+                }" font-family="Arial, sans-serif" font-size="9">... and ${
+                  items.length - 8
+                } more</text>`
+              : ""
+          }
+        </svg>
+      `;
+
+        // Download SVG file
+        console.log(`Downloading SVG for ${box.name}`);
+        const blob = new Blob([labelSVG], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${box.name.replace(/[^a-zA-Z0-9]/g, "_")}_label.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log(`Downloaded ${box.name}_label.svg`);
+      } catch (error) {
+        console.error(`Error generating QR code for ${box.name}:`, error);
+        setStatus(`Error generating label for ${box.name}`);
+      }
+    }
+    console.log("SVG export completed");
   }
 
   function handleCameraChange(cameraId: string) {
@@ -238,10 +325,10 @@ export default function App() {
                 />
               </label>
               <button
-                onClick={printLabels}
+                onClick={exportSVGLabels}
                 className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-indigo-600 text-white min-h-[44px] flex-shrink-0"
               >
-                Print
+                Export SVG
               </button>
             </div>
           </div>
