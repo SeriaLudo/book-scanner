@@ -211,7 +211,7 @@ export default function App() {
         // Create complete SVG label (384px width = 48mm at 203 DPI)
         const labelSVG = `
         <svg width="384" height="256" viewBox="0 0 384 256" xmlns="http://www.w3.org/2000/svg">
-          <rect width="384" height="256" fill="white" stroke="black" stroke-width="2"/>
+          <rect width="384" height="256" fill="white"/>
           <text x="192" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold">${
             box.name
           }</text>
