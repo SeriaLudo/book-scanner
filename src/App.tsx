@@ -222,7 +222,7 @@ export default function App() {
       if (items.length === 0) continue;
 
       // Create a simple URL for the QR code
-      const text = `${window.location.origin}#/box/${box.id}`;
+      const text = `${window.location.origin}/book-scanner/#/box/${box.id}`;
       console.log(`Generating QR code for ${box.name}:`, text);
 
       try {
