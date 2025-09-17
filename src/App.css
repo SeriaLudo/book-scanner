@@ -40,3 +40,44 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Print styles - only show QR codes when printing */
+@media print {
+  /* Hide everything by default */
+  * {
+    visibility: hidden;
+  }
+
+  /* Show only the print section - target the actual class name */
+  [class*="print:block"],
+  [class*="print:block"] * {
+    visibility: visible !important;
+  }
+
+  /* Hide non-print elements */
+  [class*="print:hidden"] {
+    display: none !important;
+  }
+
+  /* Ensure print section takes full page */
+  [class*="print:block"] {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+  }
+
+  /* Reset margins and padding for print */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure QR codes are properly sized for print */
+  [class*="print:block"] img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
