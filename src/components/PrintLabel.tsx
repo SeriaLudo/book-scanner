@@ -39,7 +39,7 @@ export default function PrintLabel({ box, items }: PrintLabelProps) {
         type: "svg",
         errorCorrectionLevel: "M",
         margin: 1,
-        width: 256,
+        width: 300,
       });
       setQrSrc(svgString);
     };
@@ -58,11 +58,11 @@ export default function PrintLabel({ box, items }: PrintLabelProps) {
       <div className="print:mt-2">
         {qrSrc ? (
           <div
-            className="print:w-16 print:h-16 w-16 h-16"
+            className="print:w-40 print:h-40 w-40 h-40"
             dangerouslySetInnerHTML={{ __html: qrSrc }}
           />
         ) : (
-          <div className="print:w-16 print:h-16 print:bg-gray-100 w-16 h-16 bg-gray-100" />
+          <div className="print:w-40 print:h-40 print:bg-gray-100 w-40 h-40 bg-gray-100" />
         )}
       </div>
       <ol className="print:mt-2 print:text-xs print:space-y-1">

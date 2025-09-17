@@ -178,7 +178,8 @@ export default function App() {
     console.log("Boxes:", boxes);
     console.log("Items by box:", itemsByBox);
 
-    for (const box of boxes) {
+    for (let i = 0; i < boxes.length; i++) {
+      const box = boxes[i];
       const items = itemsByBox.get(box.id) || [];
       console.log(`Processing box ${box.name} with ${items.length} items`);
       if (items.length === 0) continue;
@@ -203,59 +204,79 @@ export default function App() {
           type: "svg",
           errorCorrectionLevel: "M",
           margin: 1,
-          width: 256,
+          width: 600,
         });
         console.log(`QR code generated for ${box.name}`);
 
-        // Create complete SVG label
+        // Create complete SVG label (384px width = 48mm at 203 DPI)
         const labelSVG = `
-        <svg width="384" height="288" xmlns="http://www.w3.org/2000/svg">
-          <rect width="384" height="288" fill="white" stroke="black" stroke-width="1"/>
-          <text x="192" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold">${
+        <svg width="384" height="256" viewBox="0 0 384 256" xmlns="http://www.w3.org/2000/svg">
+          <rect width="384" height="256" fill="white" stroke="black" stroke-width="2"/>
+          <text x="192" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold">${
             box.name
           }</text>
-          <text x="192" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="14">${
+          <text x="192" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="12">${
             items.length
           } item${items.length === 1 ? "" : "s"}</text>
-          <g transform="translate(64, 80)">
+          <g transform="translate(32, 50) scale(3)">
             ${svgString.replace("<svg", "<g").replace("</svg>", "</g>")}
           </g>
-          <text x="20" y="200" font-family="Arial, sans-serif" font-size="10">Books:</text>
-          ${items
-            .slice(0, 8)
-            .map(
-              (it, i) =>
-                `<text x="20" y="${
-                  220 + i * 12
-                }" font-family="Arial, sans-serif" font-size="9">${i + 1}. ${
-                  it.title
-                }</text>`
-            )
-            .join("")}
-          ${
-            items.length > 8
-              ? `<text x="20" y="${
-                  220 + 8 * 12
-                }" font-family="Arial, sans-serif" font-size="9">... and ${
-                  items.length - 8
-                } more</text>`
-              : ""
-          }
         </svg>
       `;
 
-        // Download SVG file
-        console.log(`Downloading SVG for ${box.name}`);
-        const blob = new Blob([labelSVG], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${box.name.replace(/[^a-zA-Z0-9]/g, "_")}_label.svg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        console.log(`Downloaded ${box.name}_label.svg`);
+        // Convert SVG to PNG and download
+        console.log(`Converting SVG to PNG for ${box.name}`);
+
+        // Create a temporary div with the SVG
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = labelSVG;
+        tempDiv.style.position = "absolute";
+        tempDiv.style.left = "-9999px";
+        tempDiv.style.top = "-9999px";
+        document.body.appendChild(tempDiv);
+
+        // Convert to canvas then PNG
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+
+        const svgBlob = new Blob([labelSVG], { type: "image/svg+xml" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+          canvas.width = 384;
+          canvas.height = 256;
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, 384, 256);
+          }
+
+          canvas.toBlob((pngBlob) => {
+            if (pngBlob) {
+              const pngUrl = URL.createObjectURL(pngBlob);
+              const a = document.createElement("a");
+              a.href = pngUrl;
+              a.download = `${box.name.replace(
+                /[^a-zA-Z0-9]/g,
+                "_"
+              )}_label.png`;
+              a.style.display = "none";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(pngUrl);
+              URL.revokeObjectURL(svgUrl);
+              document.body.removeChild(tempDiv);
+              console.log(`Downloaded ${box.name}_label.png`);
+            }
+          }, "image/png");
+        };
+
+        img.src = svgUrl;
+
+        // Add a small delay between downloads to prevent browser blocking
+        if (i < boxes.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
       } catch (error) {
         console.error(`Error generating QR code for ${box.name}:`, error);
         setStatus(`Error generating label for ${box.name}`);
