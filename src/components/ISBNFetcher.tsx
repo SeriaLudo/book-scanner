@@ -28,7 +28,7 @@ export default function ISBNFetcher({
   onSuccess,
   onComplete,
 }: ISBNFetcherProps) {
-  const {data: bookData, isLoading, error} = useBookByISBN(isbn);
+  const {data: bookData, error} = useBookByISBN(isbn);
 
   useEffect(() => {
     if (isbn) {
