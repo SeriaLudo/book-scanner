@@ -1,14 +1,12 @@
-import { useEffect, useRef } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
-import { normalizeISBN } from "../utils/scannerUtils";
+import {BrowserMultiFormatReader} from '@zxing/browser';
+import {useEffect, useRef} from 'react';
+import {normalizeISBN} from '../utils/scannerUtils';
 
 interface ScannerProps {
   scanning: boolean;
   onScanned: (isbn: string) => void;
   onStatusChange: (status: string) => void;
-  onCameraPermissionChange: (
-    permission: "granted" | "denied" | "prompt" | "unknown"
-  ) => void;
+  onCameraPermissionChange: (permission: 'granted' | 'denied' | 'prompt' | 'unknown') => void;
   availableCameras: MediaDeviceInfo[];
   selectedCameraId: string;
   onCameraChange: (cameraId: string) => void;
@@ -34,7 +32,7 @@ export default function Scanner({
     const checkCameraPermission = async () => {
       try {
         // Debug information
-        console.log("Environment check:", {
+        console.log('Environment check:', {
           protocol: location.protocol,
           hostname: location.hostname,
           userAgent: navigator.userAgent,
@@ -44,22 +42,22 @@ export default function Scanner({
 
         if (navigator.permissions) {
           const permission = await navigator.permissions.query({
-            name: "camera" as PermissionName,
+            name: 'camera' as PermissionName,
           });
-          console.log("Camera permission state:", permission.state);
+          console.log('Camera permission state:', permission.state);
           onCameraPermissionChange(permission.state);
 
           permission.onchange = () => {
-            console.log("Camera permission changed to:", permission.state);
+            console.log('Camera permission changed to:', permission.state);
             onCameraPermissionChange(permission.state);
           };
         } else {
-          console.log("Permissions API not available");
-          onCameraPermissionChange("unknown");
+          console.log('Permissions API not available');
+          onCameraPermissionChange('unknown');
         }
       } catch (e) {
-        console.warn("Could not check camera permission:", e);
-        onCameraPermissionChange("unknown");
+        console.warn('Could not check camera permission:', e);
+        onCameraPermissionChange('unknown');
       }
     };
 
@@ -76,13 +74,11 @@ export default function Scanner({
       try {
         // Check if we're on HTTPS or localhost
         if (
-          location.protocol !== "https:" &&
-          location.hostname !== "localhost" &&
-          location.hostname !== "127.0.0.1"
+          location.protocol !== 'https:' &&
+          location.hostname !== 'localhost' &&
+          location.hostname !== '127.0.0.1'
         ) {
-          onStatusChange(
-            "Camera requires HTTPS. Please use https:// or localhost"
-          );
+          onStatusChange('Camera requires HTTPS. Please use https:// or localhost');
           return;
         }
 
@@ -94,36 +90,26 @@ export default function Scanner({
 
         // Use the standard MediaDevices API to enumerate cameras
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(
-          (device) => device.kind === "videoinput"
-        );
-        console.log("Available cameras:", videoDevices);
+        const videoDevices = devices.filter((device) => device.kind === 'videoinput');
+        console.log('Available cameras:', videoDevices);
         onCamerasDetected(videoDevices);
 
         let deviceId = selectedCameraId;
 
         // If no camera selected, use the second camera (back camera) if available, otherwise first
         if (!deviceId && videoDevices.length > 0) {
-          deviceId =
-            videoDevices.length > 1
-              ? videoDevices[1].deviceId
-              : videoDevices[0].deviceId;
+          deviceId = videoDevices.length > 1 ? videoDevices[1].deviceId : videoDevices[0].deviceId;
         }
 
         if (!deviceId) {
-          onStatusChange("No camera found. Please check permissions.");
+          onStatusChange('No camera found. Please check permissions.');
           return;
         }
 
-        const selectedCamera = videoDevices.find(
-          (d) => d.deviceId === deviceId
-        );
-        console.log(
-          "Selected camera:",
-          selectedCamera?.label || `Camera ${deviceId.slice(0, 8)}`
-        );
+        const selectedCamera = videoDevices.find((d) => d.deviceId === deviceId);
+        console.log('Selected camera:', selectedCamera?.label || `Camera ${deviceId.slice(0, 8)}`);
 
-        onStatusChange("Starting camera...");
+        onStatusChange('Starting camera...');
         const controls = await reader.decodeFromVideoDevice(
           deviceId,
           videoRef.current!,
@@ -137,24 +123,18 @@ export default function Scanner({
           }
         );
         scannerControlsRef.current = controls;
-        onStatusChange("Scanner active - Point camera at barcode");
+        onStatusChange('Scanner active - Point camera at barcode');
       } catch (e: any) {
-        console.error("Camera error:", e);
-        if (e.name === "NotAllowedError") {
-          onCameraPermissionChange("denied");
-          onStatusChange(
-            "Camera permission denied. Please allow camera access and try again."
-          );
-        } else if (e.name === "NotFoundError") {
-          onStatusChange(
-            "No camera found. Please connect a camera and try again."
-          );
-        } else if (e.name === "NotSupportedError") {
-          onStatusChange(
-            "Camera not supported. Please use HTTPS or localhost."
-          );
+        console.error('Camera error:', e);
+        if (e.name === 'NotAllowedError') {
+          onCameraPermissionChange('denied');
+          onStatusChange('Camera permission denied. Please allow camera access and try again.');
+        } else if (e.name === 'NotFoundError') {
+          onStatusChange('No camera found. Please connect a camera and try again.');
+        } else if (e.name === 'NotSupportedError') {
+          onStatusChange('Camera not supported. Please use HTTPS or localhost.');
         } else {
-          onStatusChange("Camera error: " + (e?.message || e));
+          onStatusChange('Camera error: ' + (e?.message || e));
         }
       }
     };
@@ -172,64 +152,58 @@ export default function Scanner({
 
   async function requestCameraPermission() {
     try {
-      onStatusChange("Requesting camera permission...");
-      console.log("Requesting camera permission...");
+      onStatusChange('Requesting camera permission...');
+      console.log('Requesting camera permission...');
 
       // Request basic camera permission (device selection happens later)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
       });
 
-      console.log("Camera stream obtained:", stream);
+      console.log('Camera stream obtained:', stream);
       // Stop the stream immediately as we just needed permission
       stream.getTracks().forEach((track) => {
-        console.log("Stopping track:", track.label);
+        console.log('Stopping track:', track.label);
         track.stop();
       });
 
-      onCameraPermissionChange("granted");
-      onStatusChange("Camera permission granted!");
+      onCameraPermissionChange('granted');
+      onStatusChange('Camera permission granted!');
       return true;
     } catch (e: any) {
-      console.error("Camera permission error:", e);
-      console.error("Error details:", {
+      console.error('Camera permission error:', e);
+      console.error('Error details:', {
         name: e.name,
         message: e.message,
         constraint: e.constraint,
       });
 
-      if (e.name === "NotAllowedError") {
-        onCameraPermissionChange("denied");
+      if (e.name === 'NotAllowedError') {
+        onCameraPermissionChange('denied');
         onStatusChange(
-          "Camera permission denied. Please allow camera access in your browser settings and refresh the page."
+          'Camera permission denied. Please allow camera access in your browser settings and refresh the page.'
         );
-      } else if (e.name === "NotFoundError") {
-        onStatusChange(
-          "No camera found. Please connect a camera and try again."
-        );
-      } else if (e.name === "NotSupportedError") {
-        onStatusChange("Camera not supported. Please use HTTPS or localhost.");
-      } else if (e.name === "OverconstrainedError") {
-        onStatusChange(
-          "Camera constraints not supported. Trying with basic settings..."
-        );
+      } else if (e.name === 'NotFoundError') {
+        onStatusChange('No camera found. Please connect a camera and try again.');
+      } else if (e.name === 'NotSupportedError') {
+        onStatusChange('Camera not supported. Please use HTTPS or localhost.');
+      } else if (e.name === 'OverconstrainedError') {
+        onStatusChange('Camera constraints not supported. Trying with basic settings...');
         // Try with basic constraints
         try {
           const basicStream = await navigator.mediaDevices.getUserMedia({
             video: true,
           });
           basicStream.getTracks().forEach((track) => track.stop());
-          onCameraPermissionChange("granted");
-          onStatusChange("Camera permission granted!");
+          onCameraPermissionChange('granted');
+          onStatusChange('Camera permission granted!');
           return true;
         } catch (basicError: any) {
-          console.error("Basic camera request also failed:", basicError);
-          onStatusChange(
-            "Camera error: " + (basicError?.message || String(basicError))
-          );
+          console.error('Basic camera request also failed:', basicError);
+          onStatusChange('Camera error: ' + (basicError?.message || String(basicError)));
         }
       } else {
-        onStatusChange("Camera error: " + (e?.message || e));
+        onStatusChange('Camera error: ' + (e?.message || e));
       }
       return false;
     }
@@ -245,21 +219,14 @@ export default function Scanner({
     <div className="border rounded-xl p-2 sm:p-4 bg-white w-full">
       <h2 className="font-semibold mb-2">Scan ISBN</h2>
       <div className="aspect-video bg-black/5 rounded-lg flex items-center justify-center overflow-hidden">
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          muted
-          playsInline
-        ></video>
+        <video ref={videoRef} className="w-full h-full object-cover" muted playsInline></video>
       </div>
 
       {/* Camera Selection */}
       {availableCameras.length > 1 && (
         <div className="mt-2">
           <div className="flex gap-2 items-center">
-            <label className="block text-sm font-medium text-gray-700">
-              Camera:
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Camera:</label>
             <button
               onClick={() => {
                 const currentIndex = availableCameras.findIndex(

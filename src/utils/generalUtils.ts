@@ -3,12 +3,12 @@
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export function downloadBlob(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const blob = new Blob([text], {type: 'application/json;charset=utf-8'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const a = document.createElement('a');
   a.href = url;
   a.download = filename;
-  a.style.display = "none";
+  a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -16,5 +16,5 @@ export function downloadBlob(filename: string, text: string) {
 }
 
 export function classNames(...xs: (string | false | null | undefined)[]) {
-  return xs.filter(Boolean).join(" ");
+  return xs.filter(Boolean).join(' ');
 }

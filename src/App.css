@@ -49,18 +49,18 @@
   }
 
   /* Show only the print section - target the actual class name */
-  [class*="print:block"],
-  [class*="print:block"] * {
+  [class*='print:block'],
+  [class*='print:block'] * {
     visibility: visible !important;
   }
 
   /* Hide non-print elements */
-  [class*="print:hidden"] {
+  [class*='print:hidden'] {
     display: none !important;
   }
 
   /* Ensure print section takes full page */
-  [class*="print:block"] {
+  [class*='print:block'] {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
@@ -76,7 +76,7 @@
   }
 
   /* Ensure QR codes are properly sized for print */
-  [class*="print:block"] img {
+  [class*='print:block'] img {
     max-width: 100% !important;
     height: auto !important;
   }

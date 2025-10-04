@@ -1,12 +1,14 @@
-import "./App.css";
+import './App.css';
 
-import React, { useEffect, useMemo, useState } from "react";
-import Scanner from "./components/Scanner";
-import BookList from "./components/BookList";
-import BoxManager from "./components/BoxManager";
-import PrintLabel from "./components/PrintLabel";
-import { playBeep, fetchBookByISBN, normalizeISBN } from "./utils/scannerUtils";
-import { uid, downloadBlob, classNames } from "./utils/generalUtils";
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+import React, {useEffect, useMemo, useState} from 'react';
+import BookList from './components/BookList';
+import BoxManager from './components/BoxManager';
+import ISBNFetcher from './components/ISBNFetcher';
+import PrintLabel from './components/PrintLabel';
+import Scanner from './components/Scanner';
+import {classNames, downloadBlob} from './utils/generalUtils';
+import {normalizeISBN} from './utils/scannerUtils';
 
 // Minimal one-file React app:
 // - Scan ISBN barcodes with the device camera (or type manually)
@@ -31,28 +33,37 @@ interface Box {
   name: string; // display name
 }
 
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+    },
+  },
+});
+
 // --- Main Component ---
-export default function App() {
+function App() {
   const [items, setItems] = useState<BookItem[]>([]);
-  const [boxes, setBoxes] = useState<Box[]>([{ id: "BOX-1", name: "Box 1" }]);
-  const [activeBoxId, setActiveBoxId] = useState<string>("BOX-1");
+  const [boxes, setBoxes] = useState<Box[]>([{id: 'BOX-1', name: 'Box 1'}]);
+  const [activeBoxId, setActiveBoxId] = useState<string>('BOX-1');
   const [scanning, setScanning] = useState(false);
-  const [manualISBN, setManualISBN] = useState("");
-  const [status, setStatus] = useState<string>("");
+  const [manualISBN, setManualISBN] = useState('');
+  const [status, setStatus] = useState<string>('');
   const [cameraPermission, setCameraPermission] = useState<
-    "granted" | "denied" | "prompt" | "unknown"
-  >("unknown");
-  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>(
-    []
-  );
-  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+    'granted' | 'denied' | 'prompt' | 'unknown'
+  >('unknown');
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [viewingBoxId, setViewingBoxId] = useState<string | null>(null);
+  const [currentISBN, setCurrentISBN] = useState<string | null>(null);
 
   // Handle URL routing (using hash for GitHub Pages compatibility)
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith("#/box/")) {
-      const boxId = hash.split("#/box/")[1];
+    if (hash.startsWith('#/box/')) {
+      const boxId = hash.split('#/box/')[1];
       setViewingBoxId(boxId);
     } else {
       setViewingBoxId(null);
@@ -63,20 +74,20 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash.startsWith("#/box/")) {
-        const boxId = hash.split("#/box/")[1];
+      if (hash.startsWith('#/box/')) {
+        const boxId = hash.split('#/box/')[1];
         setViewingBoxId(boxId);
       } else {
         setViewingBoxId(null);
       }
     };
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   // Persist locally
   useEffect(() => {
-    const raw = localStorage.getItem("book-box-state-v1");
+    const raw = localStorage.getItem('book-box-state-v1');
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -85,19 +96,14 @@ export default function App() {
         if (parsed.activeBoxId) setActiveBoxId(parsed.activeBoxId);
       } catch (error) {
         alert(
-          `Error loading saved data: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
+          `Error loading saved data: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      "book-box-state-v1",
-      JSON.stringify({ items, boxes, activeBoxId })
-    );
+    localStorage.setItem('book-box-state-v1', JSON.stringify({items, boxes, activeBoxId}));
   }, [items, boxes, activeBoxId]);
 
   async function handleScanned(raw: string) {
@@ -105,14 +111,12 @@ export default function App() {
     if (!isbn) return;
 
     // Check if this ISBN already exists in the current box
-    const existingInBox = items.find(
-      (item) => item.isbn === isbn && item.boxId === activeBoxId
-    );
+    const existingInBox = items.find((item) => item.isbn === isbn && item.boxId === activeBoxId);
 
     if (existingInBox) {
       setStatus(
         `"${existingInBox.title}" is already in ${
-          boxes.find((b) => b.id === activeBoxId)?.name || "this box"
+          boxes.find((b) => b.id === activeBoxId)?.name || 'this box'
         }`
       );
       return;
@@ -121,45 +125,40 @@ export default function App() {
     await addISBN(isbn);
   }
 
-  async function addISBN(isbn: string) {
-    setStatus(`Fetching ${isbn}…`);
-    const meta = await fetchBookByISBN(isbn);
-    if (!meta) {
-      setStatus(`No data found for ${isbn}`);
-      return;
-    }
-    const item: BookItem = {
-      id: uid(),
-      isbn,
-      title: meta.title,
-      authors: meta.authors,
-      boxId: activeBoxId,
-    };
+  function addISBN(isbn: string) {
+    setCurrentISBN(isbn);
+  }
+
+  function handleBookFetched(item: BookItem) {
     setItems((xs) => [item, ...xs]);
-    setStatus(`Added ${meta.title} - Scanner stopped`);
+  }
 
-    // Play beep sound for successful scan
-    playBeep();
+  function handleFetchError(message: string) {
+    setStatus(message);
+  }
 
-    // Stop scanner after successful scan
+  function handleFetchSuccess(message: string) {
+    setStatus(message);
     setScanning(false);
+  }
+
+  function handleFetchComplete() {
+    setCurrentISBN(null);
   }
 
   function addBox() {
     const nextIndex = boxes.length + 1;
     const id = `BOX-${nextIndex}`;
-    setBoxes((xs) => [...xs, { id, name: `Box ${nextIndex}` }]);
+    setBoxes((xs) => [...xs, {id, name: `Box ${nextIndex}`}]);
     setActiveBoxId(id);
   }
 
   function renameBox(id: string, name: string) {
-    setBoxes((xs) => xs.map((b) => (b.id === id ? { ...b, name } : b)));
+    setBoxes((xs) => xs.map((b) => (b.id === id ? {...b, name} : b)));
   }
 
   function moveItemToBox(itemId: string, boxId: string) {
-    setItems((xs) =>
-      xs.map((it) => (it.id === itemId ? { ...it, boxId } : it))
-    );
+    setItems((xs) => xs.map((it) => (it.id === itemId ? {...it, boxId} : it)));
   }
 
   function removeItem(id: string) {
@@ -167,15 +166,13 @@ export default function App() {
   }
 
   function clearBox(id: string) {
-    setItems((xs) =>
-      xs.map((it) => (it.boxId === id ? { ...it, boxId: undefined } : it))
-    );
+    setItems((xs) => xs.map((it) => (it.boxId === id ? {...it, boxId: undefined} : it)));
   }
 
   const itemsByBox = useMemo(() => {
     const map = new Map<string, BookItem[]>();
     for (const it of items) {
-      const key = it.boxId || "UNASSIGNED";
+      const key = it.boxId || 'UNASSIGNED';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(it);
     }
@@ -183,8 +180,8 @@ export default function App() {
   }, [items]);
 
   async function exportJSON() {
-    const data = { boxes, items };
-    downloadBlob("book-boxes.json", JSON.stringify(data, null, 2));
+    const data = {boxes, items};
+    downloadBlob('book-boxes.json', JSON.stringify(data, null, 2));
   }
 
   function onImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
@@ -197,23 +194,19 @@ export default function App() {
         if (data.boxes && data.items) {
           setBoxes(data.boxes);
           setItems(data.items);
-          setActiveBoxId(data.boxes?.[0]?.id || "BOX-1");
+          setActiveBoxId(data.boxes?.[0]?.id || 'BOX-1');
         }
       } catch (err) {
-        alert(
-          `Invalid JSON: ${
-            err instanceof Error ? err.message : "Unknown error"
-          }`
-        );
+        alert(`Invalid JSON: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     };
     reader.readAsText(file);
   }
 
   async function exportSVGLabels() {
-    console.log("Starting SVG export...");
-    console.log("Boxes:", boxes);
-    console.log("Items by box:", itemsByBox);
+    console.log('Starting SVG export...');
+    console.log('Boxes:', boxes);
+    console.log('Items by box:', itemsByBox);
 
     for (let i = 0; i < boxes.length; i++) {
       const box = boxes[i];
@@ -227,10 +220,10 @@ export default function App() {
 
       try {
         // Generate SVG QR code
-        const QRCode = (await import("qrcode")).default;
+        const QRCode = (await import('qrcode')).default;
         const svgString = await QRCode.toString(text, {
-          type: "svg",
-          errorCorrectionLevel: "M",
+          type: 'svg',
+          errorCorrectionLevel: 'M',
           margin: 1,
           width: 600,
         });
@@ -245,9 +238,9 @@ export default function App() {
           }</text>
           <text x="192" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="12">${
             items.length
-          } item${items.length === 1 ? "" : "s"}</text>
+          } item${items.length === 1 ? '' : 's'}</text>
           <g transform="translate(32, 50) scale(3)">
-            ${svgString.replace("<svg", "<g").replace("</svg>", "</g>")}
+            ${svgString.replace('<svg', '<g').replace('</svg>', '</g>')}
           </g>
         </svg>
       `;
@@ -256,19 +249,19 @@ export default function App() {
         console.log(`Converting SVG to PNG for ${box.name}`);
 
         // Create a temporary div with the SVG
-        const tempDiv = document.createElement("div");
+        const tempDiv = document.createElement('div');
         tempDiv.innerHTML = labelSVG;
-        tempDiv.style.position = "absolute";
-        tempDiv.style.left = "-9999px";
-        tempDiv.style.top = "-9999px";
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
         document.body.appendChild(tempDiv);
 
         // Convert to canvas then PNG
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         const img = new Image();
 
-        const svgBlob = new Blob([labelSVG], { type: "image/svg+xml" });
+        const svgBlob = new Blob([labelSVG], {type: 'image/svg+xml'});
         const svgUrl = URL.createObjectURL(svgBlob);
 
         img.onload = () => {
@@ -282,13 +275,10 @@ export default function App() {
             canvas.toBlob((pngBlob) => {
               if (pngBlob) {
                 const pngUrl = URL.createObjectURL(pngBlob);
-                const a = document.createElement("a");
+                const a = document.createElement('a');
                 a.href = pngUrl;
-                a.download = `${box.name.replace(
-                  /[^a-zA-Z0-9]/g,
-                  "_"
-                )}_label.png`;
-                a.style.display = "none";
+                a.download = `${box.name.replace(/[^a-zA-Z0-9]/g, '_')}_label.png`;
+                a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -299,11 +289,11 @@ export default function App() {
               } else {
                 alert(`Failed to convert ${box.name} to PNG`);
               }
-            }, "image/png");
+            }, 'image/png');
           } catch (error) {
             alert(
               `Error converting ${box.name} to PNG: ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`
             );
             document.body.removeChild(tempDiv);
@@ -328,12 +318,12 @@ export default function App() {
         setStatus(`Error generating label for ${box.name}`);
         alert(
           `Error generating QR code for ${box.name}: ${
-            error instanceof Error ? error.message : "Unknown error"
+            error instanceof Error ? error.message : 'Unknown error'
           }`
         );
       }
     }
-    console.log("SVG export completed");
+    console.log('SVG export completed');
   }
 
   function handleCameraChange(cameraId: string) {
@@ -355,12 +345,10 @@ export default function App() {
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold">
-                {box?.name || "Unknown Box"}
-              </h1>
+              <h1 className="text-3xl font-bold">{box?.name || 'Unknown Box'}</h1>
               <button
                 onClick={() => {
-                  window.location.hash = "";
+                  window.location.hash = '';
                   setViewingBoxId(null);
                 }}
                 className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
@@ -371,7 +359,7 @@ export default function App() {
 
             <div className="mb-4">
               <span className="text-lg text-gray-600">
-                {boxItems.length} item{boxItems.length === 1 ? "" : "s"}
+                {boxItems.length} item{boxItems.length === 1 ? '' : 's'}
               </span>
             </div>
 
@@ -381,9 +369,7 @@ export default function App() {
                   <h3 className="font-semibold text-lg">{item.title}</h3>
                   <p className="text-gray-600">ISBN: {item.isbn}</p>
                   {item.authors.length > 0 && (
-                    <p className="text-sm text-gray-500">
-                      by {item.authors.join(", ")}
-                    </p>
+                    <p className="text-sm text-gray-500">by {item.authors.join(', ')}</p>
                   )}
                 </div>
               ))}
@@ -396,6 +382,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 overflow-x-hidden flex flex-col items-center justify-center">
+      <ISBNFetcher
+        isbn={currentISBN}
+        activeBoxId={activeBoxId}
+        onBookFetched={handleBookFetched}
+        onError={handleFetchError}
+        onSuccess={handleFetchSuccess}
+        onComplete={handleFetchComplete}
+      />
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b w-full">
         <div className="w-full px-2 py-2 sm:py-3 flex justify-center">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-4xl">
@@ -409,20 +403,20 @@ export default function App() {
               <button
                 onClick={() => setScanning((s) => !s)}
                 className={classNames(
-                  "px-0.5 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border min-h-[40px] sm:min-h-[44px] flex-shrink-0",
+                  'px-0.5 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm font-medium border min-h-[40px] sm:min-h-[44px] flex-shrink-0',
                   scanning
-                    ? "bg-red-50 border-red-300 text-red-700"
-                    : cameraPermission === "denied"
-                    ? "bg-gray-50 border-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-emerald-50 border-emerald-300 text-emerald-700"
+                    ? 'bg-red-50 border-red-300 text-red-700'
+                    : cameraPermission === 'denied'
+                      ? 'bg-gray-50 border-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-emerald-50 border-emerald-300 text-emerald-700'
                 )}
-                disabled={cameraPermission === "denied" && !scanning}
+                disabled={cameraPermission === 'denied' && !scanning}
               >
                 {scanning
-                  ? "Stop"
-                  : cameraPermission === "denied"
-                  ? "Camera Denied"
-                  : "Start Scanner"}
+                  ? 'Stop'
+                  : cameraPermission === 'denied'
+                    ? 'Camera Denied'
+                    : 'Start Scanner'}
               </button>
               <button
                 onClick={addBox}
@@ -475,11 +469,11 @@ export default function App() {
             <p className="text-sm text-gray-600 mt-2">{status}</p>
 
             {/* Camera Permission Status */}
-            {cameraPermission === "denied" && (
+            {cameraPermission === 'denied' && (
               <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">
-                  <strong>Camera access denied.</strong> Please allow camera
-                  access in your browser settings and refresh the page.
+                  <strong>Camera access denied.</strong> Please allow camera access in your browser
+                  settings and refresh the page.
                 </p>
                 <button
                   onClick={() => window.location.reload()}
@@ -490,24 +484,21 @@ export default function App() {
               </div>
             )}
 
-            {cameraPermission === "prompt" && !scanning && (
+            {cameraPermission === 'prompt' && !scanning && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Camera permission needed.</strong> Click "Start" to
-                  request camera access.
+                  <strong>Camera permission needed.</strong> Click "Start" to request camera access.
                 </p>
               </div>
             )}
 
-            {status.includes("HTTPS") && (
+            {status.includes('HTTPS') && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  <strong>Camera requires HTTPS:</strong> Modern browsers only
-                  allow camera access over secure connections. Try running with{" "}
-                  <code className="bg-yellow-100 px-1 rounded">
-                    npm run dev
-                  </code>{" "}
-                  or deploy to HTTPS.
+                  <strong>Camera requires HTTPS:</strong> Modern browsers only allow camera access
+                  over secure connections. Try running with{' '}
+                  <code className="bg-yellow-100 px-1 rounded">npm run dev</code> or deploy to
+                  HTTPS.
                 </p>
               </div>
             )}
@@ -516,26 +507,24 @@ export default function App() {
                 value={manualISBN}
                 onChange={(e) => setManualISBN(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && manualISBN.trim()) {
+                  if (e.key === 'Enter' && manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
                       // Check if this ISBN already exists in the current box
                       const existingInBox = items.find(
-                        (item) =>
-                          item.isbn === isbn && item.boxId === activeBoxId
+                        (item) => item.isbn === isbn && item.boxId === activeBoxId
                       );
                       if (existingInBox) {
                         setStatus(
                           `"${existingInBox.title}" is already in ${
-                            boxes.find((b) => b.id === activeBoxId)?.name ||
-                            "this box"
+                            boxes.find((b) => b.id === activeBoxId)?.name || 'this box'
                           }`
                         );
                       } else {
                         addISBN(isbn);
                       }
                     }
-                    setManualISBN("");
+                    setManualISBN('');
                   }
                 }}
                 placeholder="Type or paste ISBN and press Enter"
@@ -548,21 +537,19 @@ export default function App() {
                     if (isbn) {
                       // Check if this ISBN already exists in the current box
                       const existingInBox = items.find(
-                        (item) =>
-                          item.isbn === isbn && item.boxId === activeBoxId
+                        (item) => item.isbn === isbn && item.boxId === activeBoxId
                       );
                       if (existingInBox) {
                         setStatus(
                           `"${existingInBox.title}" is already in ${
-                            boxes.find((b) => b.id === activeBoxId)?.name ||
-                            "this box"
+                            boxes.find((b) => b.id === activeBoxId)?.name || 'this box'
                           }`
                         );
                       } else {
                         addISBN(isbn);
                       }
                     }
-                    setManualISBN("");
+                    setManualISBN('');
                   }
                 }}
                 className="px-4 py-3 border rounded-lg bg-white font-medium min-h-[44px]"
@@ -596,15 +583,20 @@ export default function App() {
         <section className="print:block hidden">
           <div className="print:grid print:grid-cols-2 print:gap-12 print:mt-0">
             {boxes.map((b) => (
-              <PrintLabel
-                key={b.id}
-                box={b}
-                items={itemsByBox.get(b.id) || []}
-              />
+              <PrintLabel key={b.id} box={b} items={itemsByBox.get(b.id) || []} />
             ))}
           </div>
         </section>
       </main>
     </div>
+  );
+}
+
+// Export with QueryClientProvider
+export default function AppWithQuery() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   );
 }

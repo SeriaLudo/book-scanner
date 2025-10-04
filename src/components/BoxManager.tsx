@@ -1,3 +1,11 @@
+interface BookItem {
+  id: string;
+  isbn: string;
+  title: string;
+  authors: string[];
+  boxId?: string;
+}
+
 interface Box {
   id: string;
   name: string;
@@ -9,7 +17,7 @@ interface BoxManagerProps {
   onBoxSelect: (boxId: string) => void;
   onRenameBox: (id: string, name: string) => void;
   onClearBox: (id: string) => void;
-  itemsByBox: Map<string, any[]>;
+  itemsByBox: Map<string, BookItem[]>;
 }
 
 export default function BoxManager({
@@ -29,9 +37,7 @@ export default function BoxManager({
             key={b.id}
             onClick={() => onBoxSelect(b.id)}
             className={`px-4 py-2 rounded-full border font-medium min-h-[44px] ${
-              activeBoxId === b.id
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white"
+              activeBoxId === b.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white'
             }`}
           >
             {b.name}
@@ -40,13 +46,8 @@ export default function BoxManager({
       </div>
       <div className="mt-3 space-y-3">
         {boxes.map((b) => (
-          <div
-            key={b.id}
-            className="flex flex-col sm:flex-row sm:items-center gap-2"
-          >
-            <span className="text-xs text-gray-500 w-16 flex-shrink-0">
-              {b.id}
-            </span>
+          <div key={b.id} className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-xs text-gray-500 w-16 flex-shrink-0">{b.id}</span>
             <input
               value={b.name}
               onChange={(e) => onRenameBox(b.id, e.target.value)}
