@@ -8,12 +8,12 @@ interface BookItem {
   isbn: string;
   title: string;
   authors: string[];
-  boxId?: string;
+  groupId?: string;
 }
 
 interface ISBNFetcherProps {
   isbn: string | null;
-  activeBoxId: string;
+  activeBoxId: string; // Keep this name for now to avoid breaking changes
   onBookFetched: (item: BookItem) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
@@ -30,18 +30,22 @@ export default function ISBNFetcher({
 }: ISBNFetcherProps) {
   const {data: bookData, error} = useBookByISBN(isbn);
 
+  // Handle ISBN processing: when an ISBN is scanned, fetch book data and process the result
+  // This effect runs whenever the ISBN, book data, error state, or active box changes
   useEffect(() => {
     if (isbn) {
       if (error) {
+        // If there's an error fetching book data, notify parent and complete the process
         onError(`No data found for ${isbn}`);
         onComplete();
       } else if (bookData) {
+        // If book data was successfully fetched, create a book item and add it to the active group
         const item: BookItem = {
           id: uid(),
           isbn,
           title: bookData.title,
           authors: bookData.authors,
-          boxId: activeBoxId,
+          groupId: activeBoxId, // activeBoxId is actually the groupId
         };
         onBookFetched(item);
         onSuccess(`Added ${bookData.title} - Scanner stopped`);
