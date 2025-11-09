@@ -1,76 +1,107 @@
-# React + TypeScript + Vite
+# Book Scanner
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web application for scanning ISBN barcodes, fetching book metadata, organizing books into groups,
+and generating QR code labels.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react)
-  uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc)
-  uses [SWC](https://swc.rs/) for Fast Refresh
+### Current Functionality
 
-## Expanding the ESLint configuration
+- **Camera-Based ISBN Scanning**: Access your device's camera to scan ISBN barcodes from books
+- **Manual ISBN Entry**: Type or paste ISBNs directly if camera scanning isn't available
+- **Book Data Fetching**: Automatically retrieves book title and author information from:
+  - OpenLibrary Books API (primary)
+  - Google Books API (fallback)
+- **Group Management**: Organize scanned books into custom groups
+- **QR Code Label Generation**: Generate printable QR code labels for each group that link back to
+  view the group's contents
+- **Data Persistence**: Currently uses browser localStorage to save your book collection
+- **Export/Import**: Export your data as JSON or import previously exported data
 
-If you are developing a production application, we recommend updating the configuration to enable
-type-aware lint rules:
+## How It Works
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. **Scan or Enter ISBN**: Use the camera scanner or manually enter an ISBN
+2. **Fetch Book Data**: The app automatically looks up the book's title and author information
+3. **Organize into Groups**: Assign books to groups for better organization
+4. **Generate Labels**: Create QR code labels that can be printed and scanned to view group contents
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## Technology Stack
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+- **React 19** with TypeScript
+- **Vite** for build tooling
+- **TanStack Query** for data fetching and caching
+- **TanStack Router** for routing
+- **ZXing** for barcode scanning
+- **QRCode** library for QR code generation
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn
+
+### Installation
+
+```bash
+npm install
 ```
 
-You can also install
-[eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x)
-and
-[eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom)
-for React-specific lint rules:
+### Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+npm run dev
 ```
+
+The app will be available at `http://localhost:5173` (or the port Vite assigns).
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory.
+
+## Projected Roadmap
+
+### Phase 1: Supabase Integration
+
+- **Database Migration**: Replace localStorage with Supabase PostgreSQL database
+  - User authentication and multi-user support
+  - Persistent storage across devices
+  - Real-time data synchronization
+- **Enhanced Features**:
+  - User accounts and authentication
+  - Cloud backup of book collections
+  - Multi-device access
+
+### Phase 2: Marketplace Integration
+
+- **eBay API Integration** (if possible):
+  - List books directly to eBay from the app
+  - Track listing status and sales
+  - Sync inventory between app and eBay account
+- **Amazon API Integration** (if possible):
+  - List books on Amazon Marketplace
+  - Manage listings and inventory
+  - Price tracking and comparison
+
+### Future Enhancements
+
+- Bulk operations for managing multiple books
+- Advanced search and filtering
+- Price history tracking
+- Sales analytics and reporting
+- Mobile app version
+- Barcode scanning improvements for damaged or difficult-to-scan books
+
+## Notes
+
+- Camera access requires HTTPS in production (or localhost for development)
+- The app currently stores all data locally in your browser
+- QR code labels link to a viewable group page that can be accessed from any device
+
+## License
+
+TBD
