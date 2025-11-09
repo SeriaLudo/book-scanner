@@ -4,5 +4,5 @@ import {defineConfig} from 'vite';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // base: '/bookscanner/', // Uncomment for production deployment with base path
+  base: '/book-scanner/', // Must match router basepath for GitHub Pages
 });

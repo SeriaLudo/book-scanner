@@ -1,4 +1,4 @@
-import {createRoute, createRouter} from '@tanstack/react-router';
+import {createRoute, createRouter, Link} from '@tanstack/react-router';
 import ScannerInterface from './components/ScannerInterface';
 import {rootRoute} from './routes/__root';
 
@@ -52,9 +52,9 @@ const groupRoute = createRoute({
         <div className="min-h-screen bg-gray-50 text-gray-900 p-4 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Group not found</h1>
-            <a href="/" className="text-blue-600 hover:underline">
+            <Link to="/" className="text-blue-600 hover:underline">
               ← Back to Scanner
-            </a>
+            </Link>
           </div>
         </div>
       );
@@ -66,9 +66,9 @@ const groupRoute = createRoute({
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold">{group.name}</h1>
-              <a href="/" className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+              <Link to="/" className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
                 ← Back to Scanner
-              </a>
+              </Link>
             </div>
 
             <div className="mb-4">
