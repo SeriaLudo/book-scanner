@@ -101,6 +101,7 @@ const routeTree = rootRoute.addChildren([indexRoute, scannerRoute, groupRoute]);
 // Create the router
 export const router = createRouter({
   routeTree,
+  basepath: '/book-scanner/',
 });
 
 // Register the router instance for type safety
