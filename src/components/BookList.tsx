@@ -3,22 +3,22 @@ interface BookItem {
   isbn: string;
   title: string;
   authors: string[];
-  boxId?: string;
+  groupId?: string;
 }
 
-interface Box {
+interface Group {
   id: string;
   name: string;
 }
 
 interface BookListProps {
   items: BookItem[];
-  boxes: Box[];
-  onMoveItem: (itemId: string, boxId: string) => void;
+  groups: Group[];
+  onMoveItem: (itemId: string, groupId: string) => void;
   onRemoveItem: (itemId: string) => void;
 }
 
-export default function BookList({items, boxes, onMoveItem, onRemoveItem}: BookListProps) {
+export default function BookList({items, groups, onMoveItem, onRemoveItem}: BookListProps) {
   return (
     <div className="border rounded-xl p-2 sm:p-4 bg-white w-full">
       <h2 className="font-semibold mb-3">Scanned Books</h2>
@@ -34,13 +34,13 @@ export default function BookList({items, boxes, onMoveItem, onRemoveItem}: BookL
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <select
-                value={it.boxId || 'UNASSIGNED'}
+                value={it.groupId || 'UNASSIGNED'}
                 onChange={(e) => onMoveItem(it.id, e.target.value)}
                 className="border rounded-md text-sm px-3 py-2 min-h-[44px]"
               >
-                {boxes.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
                   </option>
                 ))}
                 <option value="UNASSIGNED">Unassigned</option>

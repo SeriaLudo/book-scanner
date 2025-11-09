@@ -6,27 +6,27 @@ interface BookItem {
   isbn: string;
   title: string;
   authors: string[];
-  boxId?: string;
+  groupId?: string;
 }
 
-interface Box {
+interface Group {
   id: string;
   name: string;
 }
 
 interface PrintLabelProps {
-  box: Box;
+  group: Group;
   items: BookItem[];
 }
 
-export default function PrintLabel({box, items}: PrintLabelProps) {
+export default function PrintLabel({group, items}: PrintLabelProps) {
   const [qrSrc, setQrSrc] = useState<string>('');
 
   useEffect(() => {
     const generateQR = async () => {
       const payload = {
-        boxId: box.id,
-        name: box.name,
+        groupId: group.id,
+        name: group.name,
         items: items.map((it) => ({
           isbn: it.isbn,
           title: it.title,
@@ -45,11 +45,11 @@ export default function PrintLabel({box, items}: PrintLabelProps) {
     };
 
     generateQR();
-  }, [box, items]);
+  }, [group, items]);
 
   return (
     <div className="print:border print:border-gray-300 print:p-8 print:break-inside-avoid print:mb-0">
-      <div className="print:text-2xl print:font-bold print:mb-2 print:mt-0">{box.name}</div>
+      <div className="print:text-2xl print:font-bold print:mb-2 print:mt-0">{group.name}</div>
       <div className="print:text-sm print:text-gray-700 print:mb-2">
         {items.length} item{items.length === 1 ? '' : 's'}
       </div>

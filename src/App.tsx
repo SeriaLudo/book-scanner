@@ -3,7 +3,7 @@ import './App.css';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import React, {useEffect, useMemo, useState} from 'react';
 import BookList from './components/BookList';
-import BoxManager from './components/BoxManager';
+import GroupManager from './components/GroupManager';
 import ISBNFetcher from './components/ISBNFetcher';
 import PrintLabel from './components/PrintLabel';
 import Scanner from './components/Scanner';
@@ -13,8 +13,8 @@ import {normalizeISBN} from './utils/scannerUtils';
 // Minimal one-file React app:
 // - Scan ISBN barcodes with the device camera (or type manually)
 // - Fetch title/author via OpenLibrary
-// - Assign books to boxes
-// - Print QR labels for each box (QR encodes box + item list JSON)
+// - Assign books to groups
+// - Print QR labels for each group (QR encodes group + item list JSON)
 // - Export/Import JSON for persistence
 
 // Tailwind is available in this environment.
@@ -25,11 +25,11 @@ interface BookItem {
   isbn: string;
   title: string;
   authors: string[];
-  boxId?: string;
+  groupId?: string;
 }
 
-interface Box {
-  id: string; // e.g., "BOX-1"
+interface Group {
+  id: string; // e.g., "GROUP-1"
   name: string; // display name
 }
 
@@ -46,8 +46,8 @@ const queryClient = new QueryClient({
 // --- Main Component ---
 function App() {
   const [items, setItems] = useState<BookItem[]>([]);
-  const [boxes, setBoxes] = useState<Box[]>([{id: 'BOX-1', name: 'Box 1'}]);
-  const [activeBoxId, setActiveBoxId] = useState<string>('BOX-1');
+  const [groups, setGroups] = useState<Group[]>([{id: 'GROUP-1', name: 'Group 1'}]);
+  const [activeGroupId, setActiveGroupId] = useState<string>('GROUP-1');
   const [scanning, setScanning] = useState(false);
   const [manualISBN, setManualISBN] = useState('');
   const [status, setStatus] = useState<string>('');
@@ -56,17 +56,17 @@ function App() {
   >('unknown');
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
-  const [viewingBoxId, setViewingBoxId] = useState<string | null>(null);
+  const [viewingGroupId, setViewingGroupId] = useState<string | null>(null);
   const [currentISBN, setCurrentISBN] = useState<string | null>(null);
 
   // Handle URL routing (using hash for GitHub Pages compatibility)
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith('#/box/')) {
-      const boxId = hash.split('#/box/')[1];
-      setViewingBoxId(boxId);
+    if (hash.startsWith('#/group/')) {
+      const groupId = hash.split('#/group/')[1];
+      setViewingGroupId(groupId);
     } else {
-      setViewingBoxId(null);
+      setViewingGroupId(null);
     }
   }, []);
 
@@ -74,11 +74,11 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash.startsWith('#/box/')) {
-        const boxId = hash.split('#/box/')[1];
-        setViewingBoxId(boxId);
+      if (hash.startsWith('#/group/')) {
+        const groupId = hash.split('#/group/')[1];
+        setViewingGroupId(groupId);
       } else {
-        setViewingBoxId(null);
+        setViewingGroupId(null);
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -87,13 +87,13 @@ function App() {
 
   // Persist locally
   useEffect(() => {
-    const raw = localStorage.getItem('book-box-state-v1');
+    const raw = localStorage.getItem('book-group-state-v1');
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
         if (parsed.items) setItems(parsed.items);
-        if (parsed.boxes) setBoxes(parsed.boxes);
-        if (parsed.activeBoxId) setActiveBoxId(parsed.activeBoxId);
+        if (parsed.groups) setGroups(parsed.groups);
+        if (parsed.activeGroupId) setActiveGroupId(parsed.activeGroupId);
       } catch (error) {
         alert(
           `Error loading saved data: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -103,20 +103,22 @@ function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('book-box-state-v1', JSON.stringify({items, boxes, activeBoxId}));
-  }, [items, boxes, activeBoxId]);
+    localStorage.setItem('book-group-state-v1', JSON.stringify({items, groups, activeGroupId}));
+  }, [items, groups, activeGroupId]);
 
   async function handleScanned(raw: string) {
     const isbn = normalizeISBN(raw);
     if (!isbn) return;
 
-    // Check if this ISBN already exists in the current box
-    const existingInBox = items.find((item) => item.isbn === isbn && item.boxId === activeBoxId);
+    // Check if this ISBN already exists in the current group
+    const existingInGroup = items.find(
+      (item) => item.isbn === isbn && item.groupId === activeGroupId
+    );
 
-    if (existingInBox) {
+    if (existingInGroup) {
       setStatus(
-        `"${existingInBox.title}" is already in ${
-          boxes.find((b) => b.id === activeBoxId)?.name || 'this box'
+        `"${existingInGroup.title}" is already in ${
+          groups.find((g) => g.id === activeGroupId)?.name || 'this group'
         }`
       );
       return;
@@ -146,33 +148,33 @@ function App() {
     setCurrentISBN(null);
   }
 
-  function addBox() {
-    const nextIndex = boxes.length + 1;
-    const id = `BOX-${nextIndex}`;
-    setBoxes((xs) => [...xs, {id, name: `Box ${nextIndex}`}]);
-    setActiveBoxId(id);
+  function addGroup() {
+    const nextIndex = groups.length + 1;
+    const id = `GROUP-${nextIndex}`;
+    setGroups((xs) => [...xs, {id, name: `Group ${nextIndex}`}]);
+    setActiveGroupId(id);
   }
 
-  function renameBox(id: string, name: string) {
-    setBoxes((xs) => xs.map((b) => (b.id === id ? {...b, name} : b)));
+  function renameGroup(id: string, name: string) {
+    setGroups((xs) => xs.map((g) => (g.id === id ? {...g, name} : g)));
   }
 
-  function moveItemToBox(itemId: string, boxId: string) {
-    setItems((xs) => xs.map((it) => (it.id === itemId ? {...it, boxId} : it)));
+  function moveItemToGroup(itemId: string, groupId: string) {
+    setItems((xs) => xs.map((it) => (it.id === itemId ? {...it, groupId} : it)));
   }
 
   function removeItem(id: string) {
     setItems((xs) => xs.filter((it) => it.id !== id));
   }
 
-  function clearBox(id: string) {
-    setItems((xs) => xs.map((it) => (it.boxId === id ? {...it, boxId: undefined} : it)));
+  function clearGroup(id: string) {
+    setItems((xs) => xs.map((it) => (it.groupId === id ? {...it, groupId: undefined} : it)));
   }
 
-  const itemsByBox = useMemo(() => {
+  const itemsByGroup = useMemo(() => {
     const map = new Map<string, BookItem[]>();
     for (const it of items) {
-      const key = it.boxId || 'UNASSIGNED';
+      const key = it.groupId || 'UNASSIGNED';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(it);
     }
@@ -180,8 +182,8 @@ function App() {
   }, [items]);
 
   async function exportJSON() {
-    const data = {boxes, items};
-    downloadBlob('book-boxes.json', JSON.stringify(data, null, 2));
+    const data = {groups, items};
+    downloadBlob('book-groups.json', JSON.stringify(data, null, 2));
   }
 
   function onImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
@@ -191,10 +193,10 @@ function App() {
     reader.onload = () => {
       try {
         const data = JSON.parse(String(reader.result));
-        if (data.boxes && data.items) {
-          setBoxes(data.boxes);
+        if (data.groups && data.items) {
+          setGroups(data.groups);
           setItems(data.items);
-          setActiveBoxId(data.boxes?.[0]?.id || 'BOX-1');
+          setActiveGroupId(data.groups?.[0]?.id || 'GROUP-1');
         }
       } catch (err) {
         alert(`Invalid JSON: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -205,18 +207,18 @@ function App() {
 
   async function exportSVGLabels() {
     console.log('Starting SVG export...');
-    console.log('Boxes:', boxes);
-    console.log('Items by box:', itemsByBox);
+    console.log('Groups:', groups);
+    console.log('Items by group:', itemsByGroup);
 
-    for (let i = 0; i < boxes.length; i++) {
-      const box = boxes[i];
-      const items = itemsByBox.get(box.id) || [];
-      console.log(`Processing box ${box.name} with ${items.length} items`);
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i];
+      const items = itemsByGroup.get(group.id) || [];
+      console.log(`Processing group ${group.name} with ${items.length} items`);
       if (items.length === 0) continue;
 
       // Create a simple URL for the QR code
-      const text = `${window.location.origin}/book-scanner/#/box/${box.id}`;
-      console.log(`Generating QR code for ${box.name}:`, text);
+      const text = `${window.location.origin}/book-scanner/#/group/${group.id}`;
+      console.log(`Generating QR code for ${group.name}:`, text);
 
       try {
         // Generate SVG QR code
@@ -227,14 +229,14 @@ function App() {
           margin: 1,
           width: 600,
         });
-        console.log(`QR code generated for ${box.name}`);
+        console.log(`QR code generated for ${group.name}`);
 
         // Create complete SVG label (384px width = 48mm at 203 DPI)
         const labelSVG = `
         <svg width="384" height="256" viewBox="0 0 384 256" xmlns="http://www.w3.org/2000/svg">
           <rect width="384" height="256" fill="white"/>
           <text x="192" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold">${
-            box.name
+            group.name
           }</text>
           <text x="192" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="12">${
             items.length
@@ -246,7 +248,7 @@ function App() {
       `;
 
         // Convert SVG to PNG and download
-        console.log(`Converting SVG to PNG for ${box.name}`);
+        console.log(`Converting SVG to PNG for ${group.name}`);
 
         // Create a temporary div with the SVG
         const tempDiv = document.createElement('div');
@@ -277,7 +279,7 @@ function App() {
                 const pngUrl = URL.createObjectURL(pngBlob);
                 const a = document.createElement('a');
                 a.href = pngUrl;
-                a.download = `${box.name.replace(/[^a-zA-Z0-9]/g, '_')}_label.png`;
+                a.download = `${group.name.replace(/[^a-zA-Z0-9]/g, '_')}_label.png`;
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
@@ -285,14 +287,14 @@ function App() {
                 URL.revokeObjectURL(pngUrl);
                 URL.revokeObjectURL(svgUrl);
                 document.body.removeChild(tempDiv);
-                console.log(`Downloaded ${box.name}_label.png`);
+                console.log(`Downloaded ${group.name}_label.png`);
               } else {
-                alert(`Failed to convert ${box.name} to PNG`);
+                alert(`Failed to convert ${group.name} to PNG`);
               }
             }, 'image/png');
           } catch (error) {
             alert(
-              `Error converting ${box.name} to PNG: ${
+              `Error converting ${group.name} to PNG: ${
                 error instanceof Error ? error.message : 'Unknown error'
               }`
             );
@@ -302,7 +304,7 @@ function App() {
         };
 
         img.onerror = () => {
-          alert(`Failed to load SVG for ${box.name}`);
+          alert(`Failed to load SVG for ${group.name}`);
           document.body.removeChild(tempDiv);
           URL.revokeObjectURL(svgUrl);
         };
@@ -310,14 +312,14 @@ function App() {
         img.src = svgUrl;
 
         // Add a small delay between downloads to prevent browser blocking
-        if (i < boxes.length - 1) {
+        if (i < groups.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
       } catch (error) {
-        console.error(`Error generating QR code for ${box.name}:`, error);
-        setStatus(`Error generating label for ${box.name}`);
+        console.error(`Error generating QR code for ${group.name}:`, error);
+        setStatus(`Error generating label for ${group.name}`);
         alert(
-          `Error generating QR code for ${box.name}: ${
+          `Error generating QR code for ${group.name}: ${
             error instanceof Error ? error.message : 'Unknown error'
           }`
         );
@@ -335,21 +337,21 @@ function App() {
     }
   }
 
-  // Box viewer component for QR code scanning
-  if (viewingBoxId) {
-    const box = boxes.find((b) => b.id === viewingBoxId);
-    const boxItems = itemsByBox.get(viewingBoxId) || [];
+  // Group viewer component for QR code scanning
+  if (viewingGroupId) {
+    const group = groups.find((g) => g.id === viewingGroupId);
+    const groupItems = itemsByGroup.get(viewingGroupId) || [];
 
     return (
       <div className="min-h-screen bg-gray-50 text-gray-900 p-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold">{box?.name || 'Unknown Box'}</h1>
+              <h1 className="text-3xl font-bold">{group?.name || 'Unknown Group'}</h1>
               <button
                 onClick={() => {
                   window.location.hash = '';
-                  setViewingBoxId(null);
+                  setViewingGroupId(null);
                 }}
                 className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
               >
@@ -359,12 +361,12 @@ function App() {
 
             <div className="mb-4">
               <span className="text-lg text-gray-600">
-                {boxItems.length} item{boxItems.length === 1 ? '' : 's'}
+                {groupItems.length} item{groupItems.length === 1 ? '' : 's'}
               </span>
             </div>
 
             <div className="grid gap-4">
-              {boxItems.map((item) => (
+              {groupItems.map((item) => (
                 <div key={item.id} className="border rounded-lg p-4">
                   <h3 className="font-semibold text-lg">{item.title}</h3>
                   <p className="text-gray-600">ISBN: {item.isbn}</p>
@@ -384,7 +386,7 @@ function App() {
     <div className="min-h-screen bg-gray-50 text-gray-900 overflow-x-hidden flex flex-col items-center justify-center">
       <ISBNFetcher
         isbn={currentISBN}
-        activeBoxId={activeBoxId}
+        activeGroupId={activeGroupId}
         onBookFetched={handleBookFetched}
         onError={handleFetchError}
         onSuccess={handleFetchSuccess}
@@ -394,7 +396,7 @@ function App() {
         <div className="w-full px-2 py-2 sm:py-3 flex justify-center">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-4xl">
             <div className="flex-1">
-              <h1 className="text-xl font-semibold">Book Box QR Labeler</h1>
+              <h1 className="text-xl font-semibold">Book Group QR Labeler</h1>
               <span className="text-sm text-gray-500">
                 Scan ISBN → Fetch Metadata → Print Labels
               </span>
@@ -419,10 +421,10 @@ function App() {
                     : 'Start Scanner'}
               </button>
               <button
-                onClick={addBox}
+                onClick={addGroup}
                 className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-white min-h-[44px] flex-shrink-0"
               >
-                + Box
+                + Group
               </button>
               <button
                 onClick={exportJSON}
@@ -510,14 +512,14 @@ function App() {
                   if (e.key === 'Enter' && manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
-                      // Check if this ISBN already exists in the current box
-                      const existingInBox = items.find(
-                        (item) => item.isbn === isbn && item.boxId === activeBoxId
+                      // Check if this ISBN already exists in the current group
+                      const existingInGroup = items.find(
+                        (item) => item.isbn === isbn && item.groupId === activeGroupId
                       );
-                      if (existingInBox) {
+                      if (existingInGroup) {
                         setStatus(
-                          `"${existingInBox.title}" is already in ${
-                            boxes.find((b) => b.id === activeBoxId)?.name || 'this box'
+                          `"${existingInGroup.title}" is already in ${
+                            groups.find((g) => g.id === activeGroupId)?.name || 'this group'
                           }`
                         );
                       } else {
@@ -535,14 +537,14 @@ function App() {
                   if (manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
-                      // Check if this ISBN already exists in the current box
-                      const existingInBox = items.find(
-                        (item) => item.isbn === isbn && item.boxId === activeBoxId
+                      // Check if this ISBN already exists in the current group
+                      const existingInGroup = items.find(
+                        (item) => item.isbn === isbn && item.groupId === activeGroupId
                       );
-                      if (existingInBox) {
+                      if (existingInGroup) {
                         setStatus(
-                          `"${existingInBox.title}" is already in ${
-                            boxes.find((b) => b.id === activeBoxId)?.name || 'this box'
+                          `"${existingInGroup.title}" is already in ${
+                            groups.find((g) => g.id === activeGroupId)?.name || 'this group'
                           }`
                         );
                       } else {
@@ -559,13 +561,13 @@ function App() {
             </div>
           </div>
 
-          <BoxManager
-            boxes={boxes}
-            activeBoxId={activeBoxId}
-            onBoxSelect={setActiveBoxId}
-            onRenameBox={renameBox}
-            onClearBox={clearBox}
-            itemsByBox={itemsByBox}
+          <GroupManager
+            groups={groups}
+            activeGroupId={activeGroupId}
+            onGroupSelect={setActiveGroupId}
+            onRenameGroup={renameGroup}
+            onClearGroup={clearGroup}
+            itemsByGroup={itemsByGroup}
           />
         </section>
 
@@ -573,8 +575,8 @@ function App() {
         <section className="print:hidden">
           <BookList
             items={items}
-            boxes={boxes}
-            onMoveItem={moveItemToBox}
+            groups={groups}
+            onMoveItem={moveItemToGroup}
             onRemoveItem={removeItem}
           />
         </section>
@@ -582,8 +584,8 @@ function App() {
         {/* Print layout */}
         <section className="print:block hidden">
           <div className="print:grid print:grid-cols-2 print:gap-12 print:mt-0">
-            {boxes.map((b) => (
-              <PrintLabel key={b.id} box={b} items={itemsByBox.get(b.id) || []} />
+            {groups.map((g) => (
+              <PrintLabel key={g.id} group={g} items={itemsByGroup.get(g.id) || []} />
             ))}
           </div>
         </section>

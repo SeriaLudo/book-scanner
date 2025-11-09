@@ -292,7 +292,7 @@ function ScannerInterface() {
     <div className="min-h-screen bg-gray-50 text-gray-900 overflow-x-hidden flex flex-col items-center justify-center">
       <ISBNFetcher
         isbn={currentISBN}
-        activeBoxId={activeGroupId}
+        activeGroupId={activeGroupId}
         onBookFetched={handleBookFetched}
         onError={handleFetchError}
         onSuccess={handleFetchSuccess}
@@ -481,7 +481,7 @@ function ScannerInterface() {
         <section className="print:hidden">
           <BookList
             items={items}
-            boxes={groups}
+            groups={groups}
             onMoveItem={moveItemToGroup}
             onRemoveItem={removeItem}
           />
@@ -491,7 +491,7 @@ function ScannerInterface() {
         <section className="print:block hidden">
           <div className="print:grid print:grid-cols-2 print:gap-12 print:mt-0">
             {groups.map((g) => (
-              <PrintLabel key={g.id} box={g} items={itemsByGroup.get(g.id) || []} />
+              <PrintLabel key={g.id} group={g} items={itemsByGroup.get(g.id) || []} />
             ))}
           </div>
         </section>

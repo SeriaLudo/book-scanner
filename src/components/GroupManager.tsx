@@ -1,5 +1,3 @@
-import {useNavigate} from '@tanstack/react-router';
-
 interface BookItem {
   id: string;
   isbn: string;
@@ -30,12 +28,6 @@ export default function GroupManager({
   onClearGroup,
   itemsByGroup,
 }: GroupManagerProps) {
-  const navigate = useNavigate();
-
-  const handleViewGroup = (groupId: string) => {
-    navigate({to: '/group/$groupId', params: {groupId}});
-  };
-
   return (
     <div className="border rounded-xl p-2 sm:p-4 bg-white w-full">
       <h2 className="font-semibold mb-3">Groups</h2>
@@ -65,12 +57,6 @@ export default function GroupManager({
               <span className="text-xs text-gray-500">
                 {itemsByGroup.get(g.id)?.length || 0} items
               </span>
-              <button
-                onClick={() => handleViewGroup(g.id)}
-                className="text-sm px-3 py-2 border rounded-md font-medium min-h-[44px] bg-blue-50 text-blue-700 hover:bg-blue-100"
-              >
-                View
-              </button>
               <button
                 onClick={() => onClearGroup(g.id)}
                 className="text-sm px-3 py-2 border rounded-md font-medium min-h-[44px]"
