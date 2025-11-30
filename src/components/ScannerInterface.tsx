@@ -78,10 +78,6 @@ function ScannerInterface() {
     setCurrentISBN(isbn);
   }
 
-  function handleBookFetched(item: BookItem) {
-    setItems((xs) => [item, ...xs]);
-  }
-
   function handleFetchError(message: string) {
     setStatus(message);
   }
@@ -291,7 +287,6 @@ function ScannerInterface() {
       <ISBNFetcher
         isbn={currentISBN}
         activeGroupId={activeGroupId}
-        onBookFetched={handleBookFetched}
         onError={handleFetchError}
         onSuccess={handleFetchSuccess}
         onComplete={handleFetchComplete}

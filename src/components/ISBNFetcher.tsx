@@ -1,20 +1,11 @@
 import {useEffect} from 'react';
 import {useBookByISBN} from '../hooks/useBookByISBN';
-import {uid} from '../utils/generalUtils';
+import {useBooks} from '../hooks/useBooks';
 import {playBeep} from '../utils/scannerUtils';
-
-interface BookItem {
-  id: string;
-  isbn: string;
-  title: string;
-  authors: string[];
-  groupId?: string;
-}
 
 interface ISBNFetcherProps {
   isbn: string | null;
-  activeGroupId: string;
-  onBookFetched: (item: BookItem) => void;
+  activeGroupId: string | null;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
   onComplete: () => void;
@@ -23,39 +14,37 @@ interface ISBNFetcherProps {
 export default function ISBNFetcher({
   isbn,
   activeGroupId,
-  onBookFetched,
   onError,
   onSuccess,
   onComplete,
 }: ISBNFetcherProps) {
   const {data: bookData, error} = useBookByISBN(isbn);
+  const {addBook} = useBooks();
 
-  // Handle ISBN processing: when an ISBN is scanned, fetch book data and process the result
-  // This effect runs whenever the ISBN, book data, error state, or active group changes
+  // Handle ISBN processing: when an ISBN is scanned, fetch book data and save to database
   useEffect(() => {
-    if (isbn) {
-      if (error) {
-        // If there's an error fetching book data, notify parent and complete the process
-        onError(`No data found for ${isbn}`);
-        onComplete();
-      } else if (bookData) {
-        // If book data was successfully fetched, create a book item and add it to the active group
-        const item: BookItem = {
-          id: uid(),
-          isbn,
-          title: bookData.title,
-          authors: bookData.authors,
-          groupId: activeGroupId,
-        };
-        onBookFetched(item);
-        onSuccess(`Added ${bookData.title} - Scanner stopped`);
-
-        // Play beep sound for successful scan
-        playBeep();
-        onComplete();
-      }
+    if (isbn && bookData && activeGroupId) {
+      // Save book to database using React Query mutation
+      addBook({
+        isbn,
+        title: bookData.title,
+        authors: bookData.authors,
+        group_id: activeGroupId,
+      })
+        .then(() => {
+          onSuccess(`Added ${bookData.title} - Scanner stopped`);
+          playBeep();
+          onComplete();
+        })
+        .catch((err) => {
+          onError(`Failed to save book: ${err.message}`);
+          onComplete();
+        });
+    } else if (isbn && error) {
+      onError(`No data found for ${isbn}`);
+      onComplete();
     }
-  }, [isbn, bookData, error, activeGroupId, onBookFetched, onError, onSuccess, onComplete]);
+  }, [isbn, bookData, error, activeGroupId, addBook, onError, onSuccess, onComplete]);
 
   return null; // This component doesn't render anything
 }
