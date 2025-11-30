@@ -1,3 +1,4 @@
+import {useNavigate, useParams} from '@tanstack/react-router';
 import {useEffect, useMemo, useState} from 'react';
 import {useAuth} from '../contexts/AuthContext';
 import {useBooks, type Book} from '../hooks/useBooks';
@@ -15,7 +16,18 @@ function ScannerInterface() {
   const {user, signOut} = useAuth();
   const {books, updateBook, deleteBook} = useBooks();
   const {groups, createGroup, updateGroup} = useGroups();
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const params = useParams({strict: false}) as {groupSlug?: string};
+
+  // Get active group from URL or default to first group
+  const activeGroup = useMemo(() => {
+    if (params?.groupSlug) {
+      return groups.find((g) => g.slug === params.groupSlug);
+    }
+    return groups[0] || null;
+  }, [groups, params?.groupSlug]);
+
+  const activeGroupId = activeGroup?.id || null;
   const [scanning, setScanning] = useState(false);
   const [manualISBN, setManualISBN] = useState('');
   const [status, setStatus] = useState<string>('');
@@ -27,12 +39,12 @@ function ScannerInterface() {
   const [currentISBN, setCurrentISBN] = useState<string | null>(null);
   const [isProcessingISBN, setIsProcessingISBN] = useState(false);
 
-  // Set first group as active when groups load
+  // Navigate to first group if no group is selected
   useEffect(() => {
-    if (groups.length > 0 && !activeGroupId) {
-      setActiveGroupId(groups[0].id);
+    if (groups.length > 0 && !params.groupSlug) {
+      navigate({to: '/scanner/$groupSlug', params: {groupSlug: groups[0].slug}});
     }
-  }, [groups, activeGroupId]);
+  }, [groups, params.groupSlug, navigate]);
 
   async function handleScanned(raw: string) {
     const isbn = normalizeISBN(raw);
@@ -72,7 +84,7 @@ function ScannerInterface() {
     const slug = `group-${nextIndex}`;
     try {
       const newGroup = await createGroup({name, slug});
-      setActiveGroupId(newGroup.id);
+      navigate({to: '/scanner/$groupSlug', params: {groupSlug: newGroup.slug}});
     } catch (error) {
       setStatus(
         `Failed to create group: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -424,7 +436,12 @@ function ScannerInterface() {
           <GroupManager
             groups={groups}
             activeGroupId={activeGroupId || ''}
-            onGroupSelect={setActiveGroupId}
+            onGroupSelect={(groupId) => {
+              const group = groups.find((g) => g.id === groupId);
+              if (group) {
+                navigate({to: '/scanner/$groupSlug', params: {groupSlug: group.slug}});
+              }
+            }}
             onRenameGroup={renameGroup}
             onClearGroup={clearGroup}
             itemsByGroup={itemsByGroup}

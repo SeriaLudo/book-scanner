@@ -1,4 +1,5 @@
 import {createRoute, createRouter, Link} from '@tanstack/react-router';
+import React from 'react';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScannerInterface from './components/ScannerInterface';
 import {useBooks} from './hooks/useBooks';
@@ -9,6 +10,26 @@ import {rootRoute} from './routes/__root';
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  component: () => {
+    const navigate = indexRoute.useNavigate();
+    const {groups} = useGroups();
+
+    // Redirect to first group if groups exist, otherwise stay on scanner
+    React.useEffect(() => {
+      if (groups.length > 0) {
+        navigate({to: '/scanner/$groupSlug', params: {groupSlug: groups[0].slug}});
+      } else {
+        navigate({to: '/scanner'});
+      }
+    }, [groups, navigate]);
+
+    return null;
+  },
+});
+
+const scannerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/scanner',
   component: () => (
     <ProtectedRoute>
       <ScannerInterface />
@@ -16,9 +37,9 @@ const indexRoute = createRoute({
   ),
 });
 
-const scannerRoute = createRoute({
+const scannerWithGroupRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/scanner',
+  path: '/scanner/$groupSlug',
   component: () => (
     <ProtectedRoute>
       <ScannerInterface />
@@ -86,7 +107,12 @@ const groupRoute = createRoute({
 });
 
 // Create the route tree
-const routeTree = rootRoute.addChildren([indexRoute, scannerRoute, groupRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  scannerRoute,
+  scannerWithGroupRoute,
+  groupRoute,
+]);
 
 // Create the router
 export const router = createRouter({
