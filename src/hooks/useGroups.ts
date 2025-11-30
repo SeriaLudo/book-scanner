@@ -6,6 +6,7 @@ export interface Group {
   id: string;
   user_id: string;
   name: string;
+  slug: string;
   created_at: string;
   updated_at: string;
 }
@@ -32,12 +33,12 @@ export function useGroups() {
   });
 
   const createGroup = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({name, slug}: {name: string; slug: string}) => {
       if (!user) throw new Error('Not authenticated');
 
       const {data, error} = await supabase
         .from('groups')
-        .insert({user_id: user.id, name})
+        .insert({user_id: user.id, name, slug})
         .select()
         .single();
 

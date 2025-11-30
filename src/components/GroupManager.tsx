@@ -1,15 +1,5 @@
-interface BookItem {
-  id: string;
-  isbn: string;
-  title: string;
-  authors: string[];
-  groupId?: string;
-}
-
-interface Group {
-  id: string;
-  name: string;
-}
+import type {Book} from '../hooks/useBooks';
+import type {Group} from '../hooks/useGroups';
 
 interface GroupManagerProps {
   groups: Group[];
@@ -17,7 +7,7 @@ interface GroupManagerProps {
   onGroupSelect: (groupId: string) => void;
   onRenameGroup: (id: string, name: string) => void;
   onClearGroup: (id: string) => void;
-  itemsByGroup: Map<string, BookItem[]>;
+  itemsByGroup: Map<string, Book[]>;
 }
 
 export default function GroupManager({

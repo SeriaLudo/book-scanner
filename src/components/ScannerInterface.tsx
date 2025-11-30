@@ -1,5 +1,7 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {useAuth} from '../contexts/AuthContext';
+import {useBooks, type Book} from '../hooks/useBooks';
+import {useGroups} from '../hooks/useGroups';
 import {classNames, downloadBlob} from '../utils/generalUtils';
 import {normalizeISBN} from '../utils/scannerUtils';
 import BookList from './BookList';
@@ -8,26 +10,12 @@ import ISBNFetcher from './ISBNFetcher';
 import PrintLabel from './PrintLabel';
 import Scanner from './Scanner';
 
-// Types
-interface BookItem {
-  id: string; // uuid-ish
-  isbn: string;
-  title: string;
-  authors: string[];
-  groupId?: string;
-}
-
-interface Group {
-  id: string; // e.g., "GROUP-1"
-  name: string; // display name
-}
-
 // Main Scanner Interface Component
 function ScannerInterface() {
   const {user, signOut} = useAuth();
-  const [items, setItems] = useState<BookItem[]>([]);
-  const [groups, setGroups] = useState<Group[]>([{id: 'GROUP-1', name: 'Group 1'}]);
-  const [activeGroupId, setActiveGroupId] = useState<string>('GROUP-1');
+  const {books, updateBook, deleteBook} = useBooks();
+  const {groups, createGroup, updateGroup} = useGroups();
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [manualISBN, setManualISBN] = useState('');
   const [status, setStatus] = useState<string>('');
@@ -39,26 +27,12 @@ function ScannerInterface() {
   const [currentISBN, setCurrentISBN] = useState<string | null>(null);
   const [isProcessingISBN, setIsProcessingISBN] = useState(false);
 
-  // Persist locally (will be replaced with database)
+  // Set first group as active when groups load
   useEffect(() => {
-    const raw = localStorage.getItem('book-group-state-v1');
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed.items) setItems(parsed.items);
-        if (parsed.groups) setGroups(parsed.groups);
-        if (parsed.activeGroupId) setActiveGroupId(parsed.activeGroupId);
-      } catch (error) {
-        alert(
-          `Error loading saved data: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
+    if (groups.length > 0 && !activeGroupId) {
+      setActiveGroupId(groups[0].id);
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('book-group-state-v1', JSON.stringify({items, groups, activeGroupId}));
-  }, [items, groups, activeGroupId]);
+  }, [groups, activeGroupId]);
 
   async function handleScanned(raw: string) {
     const isbn = normalizeISBN(raw);
@@ -92,61 +66,72 @@ function ScannerInterface() {
     setIsProcessingISBN(false);
   }
 
-  function addGroup() {
+  async function addGroup() {
     const nextIndex = groups.length + 1;
-    const id = `GROUP-${nextIndex}`;
-    setGroups((xs) => [...xs, {id, name: `Group ${nextIndex}`}]);
-    setActiveGroupId(id);
+    const name = `Group ${nextIndex}`;
+    const slug = `group-${nextIndex}`;
+    try {
+      const newGroup = await createGroup({name, slug});
+      setActiveGroupId(newGroup.id);
+    } catch (error) {
+      setStatus(
+        `Failed to create group: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
-  function renameGroup(id: string, name: string) {
-    setGroups((xs) => xs.map((g) => (g.id === id ? {...g, name} : g)));
+  async function renameGroup(id: string, name: string) {
+    try {
+      await updateGroup({id, name});
+    } catch (error) {
+      setStatus(
+        `Failed to rename group: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
-  function moveItemToGroup(itemId: string, groupId: string) {
-    setItems((xs) => xs.map((it) => (it.id === itemId ? {...it, groupId} : it)));
+  async function moveItemToGroup(bookId: string, groupId: string) {
+    try {
+      await updateBook({id: bookId, groupId: groupId || null});
+    } catch (error) {
+      setStatus(`Failed to move book: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  function removeItem(id: string) {
-    setItems((xs) => xs.filter((it) => it.id !== id));
+  async function removeItem(id: string) {
+    try {
+      await deleteBook(id);
+    } catch (error) {
+      setStatus(
+        `Failed to delete book: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
-  function clearGroup(id: string) {
-    setItems((xs) => xs.map((it) => (it.groupId === id ? {...it, groupId: undefined} : it)));
+  async function clearGroup(id: string) {
+    try {
+      const booksInGroup = books.filter((b) => b.group_id === id);
+      await Promise.all(booksInGroup.map((book) => updateBook({id: book.id, groupId: null})));
+    } catch (error) {
+      setStatus(
+        `Failed to clear group: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   const itemsByGroup = useMemo(() => {
-    const map = new Map<string, BookItem[]>();
-    for (const it of items) {
-      const key = it.groupId || 'UNASSIGNED';
+    const map = new Map<string, Book[]>();
+    for (const book of books) {
+      const key = book.group_id || 'UNASSIGNED';
       if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(it);
+      map.get(key)!.push(book);
     }
     return map;
-  }, [items]);
+  }, [books]);
 
   async function exportJSON() {
-    const data = {groups, items};
+    const data = {groups, books};
     downloadBlob('book-groups.json', JSON.stringify(data, null, 2));
-  }
-
-  function onImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(String(reader.result));
-        if (data.groups && data.items) {
-          setGroups(data.groups);
-          setItems(data.items);
-          setActiveGroupId(data.groups?.[0]?.id || 'GROUP-1');
-        }
-      } catch (err) {
-        alert(`Invalid JSON: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    };
-    reader.readAsText(file);
   }
 
   async function exportSVGLabels() {
@@ -160,9 +145,9 @@ function ScannerInterface() {
       console.log(`Processing group ${group.name} with ${items.length} items`);
       if (items.length === 0) continue;
 
-      // Create a simple URL for the QR code (using basepath from router)
+      // Create a simple URL for the QR code using slug (using basepath from router)
       const basepath = '/book-scanner';
-      const text = `${window.location.origin}${basepath}/group/${group.id}`;
+      const text = `${window.location.origin}${basepath}/group/${group.slug}`;
       console.log(`Generating QR code for ${group.name}:`, text);
 
       try {
@@ -340,15 +325,6 @@ function ScannerInterface() {
               >
                 Export
               </button>
-              <label className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-white cursor-pointer min-h-[44px] flex items-center flex-shrink-0">
-                Import
-                <input
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  onChange={onImportJSON}
-                />
-              </label>
               <button
                 onClick={exportSVGLabels}
                 className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-indigo-600 text-white min-h-[44px] flex-shrink-0"
@@ -447,7 +423,7 @@ function ScannerInterface() {
 
           <GroupManager
             groups={groups}
-            activeGroupId={activeGroupId}
+            activeGroupId={activeGroupId || ''}
             onGroupSelect={setActiveGroupId}
             onRenameGroup={renameGroup}
             onClearGroup={clearGroup}
@@ -458,7 +434,7 @@ function ScannerInterface() {
         {/* Right: Item list */}
         <section className="print:hidden">
           <BookList
-            items={items}
+            items={books}
             groups={groups}
             onMoveItem={moveItemToGroup}
             onRemoveItem={removeItem}

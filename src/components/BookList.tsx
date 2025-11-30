@@ -1,18 +1,8 @@
-interface BookItem {
-  id: string;
-  isbn: string;
-  title: string;
-  authors: string[];
-  groupId?: string;
-}
-
-interface Group {
-  id: string;
-  name: string;
-}
+import type {Book} from '../hooks/useBooks';
+import type {Group} from '../hooks/useGroups';
 
 interface BookListProps {
-  items: BookItem[];
+  items: Book[];
   groups: Group[];
   onMoveItem: (itemId: string, groupId: string) => void;
   onRemoveItem: (itemId: string) => void;
@@ -34,8 +24,10 @@ export default function BookList({items, groups, onMoveItem, onRemoveItem}: Book
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <select
-                value={it.groupId || 'UNASSIGNED'}
-                onChange={(e) => onMoveItem(it.id, e.target.value)}
+                value={it.group_id || 'UNASSIGNED'}
+                onChange={(e) =>
+                  onMoveItem(it.id, e.target.value === 'UNASSIGNED' ? '' : e.target.value)
+                }
                 className="border rounded-md text-sm px-3 py-2 min-h-[44px]"
               >
                 {groups.map((g) => (

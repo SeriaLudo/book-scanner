@@ -1,6 +1,8 @@
 import {createRoute, createRouter, Link} from '@tanstack/react-router';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScannerInterface from './components/ScannerInterface';
+import {useBooks} from './hooks/useBooks';
+import {useGroups} from './hooks/useGroups';
 import {rootRoute} from './routes/__root';
 
 // Create routes using code-based approach
@@ -26,35 +28,14 @@ const scannerRoute = createRoute({
 
 const groupRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/group/$groupId',
+  path: '/group/$groupSlug',
   component: () => {
-    const {groupId} = groupRoute.useParams();
+    const {groupSlug} = groupRoute.useParams();
+    const {groups} = useGroups();
+    const {books} = useBooks();
 
-    // Mock data for now - will be replaced with database queries
-    const mockGroups = [
-      {id: 'GROUP-1', name: 'Group 1'},
-      {id: 'GROUP-2', name: 'Group 2'},
-    ];
-
-    const mockBooks = [
-      {
-        id: '1',
-        isbn: '1234567890',
-        title: 'Sample Book 1',
-        authors: ['Author 1'],
-        groupId: 'GROUP-1',
-      },
-      {
-        id: '2',
-        isbn: '0987654321',
-        title: 'Sample Book 2',
-        authors: ['Author 2'],
-        groupId: 'GROUP-1',
-      },
-    ];
-
-    const group = mockGroups.find((g) => g.id === groupId);
-    const books = mockBooks.filter((book) => book.groupId === groupId);
+    const group = groups.find((g) => g.slug === groupSlug);
+    const groupBooks = group ? books.filter((book) => book.group_id === group.id) : [];
 
     if (!group) {
       return (
@@ -82,12 +63,12 @@ const groupRoute = createRoute({
 
             <div className="mb-4">
               <span className="text-lg text-gray-600">
-                {books.length} item{books.length === 1 ? '' : 's'}
+                {groupBooks.length} item{groupBooks.length === 1 ? '' : 's'}
               </span>
             </div>
 
             <div className="grid gap-4">
-              {books.map((book) => (
+              {groupBooks.map((book) => (
                 <div key={book.id} className="border rounded-lg p-4">
                   <h3 className="font-semibold text-lg">{book.title}</h3>
                   <p className="text-gray-600">ISBN: {book.isbn}</p>

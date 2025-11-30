@@ -3,8 +3,10 @@ CREATE TABLE groups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
+  slug TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, slug) -- Unique slug per user
 );
 
 -- Create books table
@@ -25,6 +27,7 @@ CREATE TABLE books (
 CREATE INDEX idx_books_user_id ON books(user_id);
 CREATE INDEX idx_books_group_id ON books(group_id);
 CREATE INDEX idx_groups_user_id ON groups(user_id);
+CREATE INDEX idx_groups_slug ON groups(slug);
 
 -- Enable Row Level Security
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
