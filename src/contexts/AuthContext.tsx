@@ -25,22 +25,41 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       .then(({data: {session}, error}) => {
         if (error) {
           console.error('Error getting session:', error);
+          // If refresh token is invalid, clear the session
+          if (error.message?.includes('refresh_token')) {
+            supabase.auth.signOut();
+          }
+          setSession(null);
+          setUser(null);
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
         }
-        setSession(session);
-        setUser(session?.user ?? null);
         setLoading(false);
       })
       .catch((error) => {
         console.error('Error initializing auth:', error);
+        // Clear session on error
+        setSession(null);
+        setUser(null);
         setLoading(false);
       });
 
     // Listen for auth changes
     const {
       data: {subscription},
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Handle token refresh errors
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(session);
+        setUser(session?.user ?? null);
+      } else if (event === 'SIGNED_OUT' || !session) {
+        setSession(null);
+        setUser(null);
+      } else {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
       setLoading(false);
     });
 

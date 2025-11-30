@@ -2,6 +2,17 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useAuth} from '../contexts/AuthContext';
 import {supabase} from '../lib/supabase';
 
+// Helper to handle auth errors
+async function handleAuthError(error: any) {
+  if (
+    error?.code === 'PGRST301' ||
+    error?.message?.includes('JWT') ||
+    error?.message?.includes('refresh_token')
+  ) {
+    await supabase.auth.signOut();
+  }
+}
+
 export interface Group {
   id: string;
   user_id: string;
@@ -26,7 +37,10 @@ export function useGroups() {
         .eq('user_id', user.id)
         .order('created_at', {ascending: true});
 
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
       return (data as Group[]) || [];
     },
     enabled: !!user,
@@ -42,7 +56,10 @@ export function useGroups() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
       return data as Group;
     },
     onSettled: () => {
@@ -59,7 +76,10 @@ export function useGroups() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
       return data as Group;
     },
     onSettled: () => {
@@ -70,7 +90,10 @@ export function useGroups() {
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
       const {error} = await supabase.from('groups').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({queryKey: ['groups', user?.id]});

@@ -2,6 +2,17 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useAuth} from '../contexts/AuthContext';
 import {supabase} from '../lib/supabase';
 
+// Helper to handle auth errors
+async function handleAuthError(error: any) {
+  if (
+    error?.code === 'PGRST301' ||
+    error?.message?.includes('JWT') ||
+    error?.message?.includes('refresh_token')
+  ) {
+    await supabase.auth.signOut();
+  }
+}
+
 export interface Book {
   id: string;
   user_id: string;
@@ -41,7 +52,10 @@ export function useBooks(groupId?: string | null) {
 
       const {data, error} = await query;
 
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
       return (data as Book[]) || [];
     },
     enabled: !!user,
@@ -63,7 +77,10 @@ export function useBooks(groupId?: string | null) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
       return data as Book;
     },
     onSettled: () => {
@@ -83,7 +100,10 @@ export function useBooks(groupId?: string | null) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
       return data as Book;
     },
     onSettled: () => {
@@ -95,7 +115,10 @@ export function useBooks(groupId?: string | null) {
   const deleteBook = useMutation({
     mutationFn: async (id: string) => {
       const {error} = await supabase.from('books').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        await handleAuthError(error);
+        throw error;
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({queryKey: ['books', user?.id]});
