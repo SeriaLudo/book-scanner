@@ -37,6 +37,7 @@ function ScannerInterface() {
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [currentISBN, setCurrentISBN] = useState<string | null>(null);
+  const [isProcessingISBN, setIsProcessingISBN] = useState(false);
 
   // Persist locally (will be replaced with database)
   useEffect(() => {
@@ -63,19 +64,12 @@ function ScannerInterface() {
     const isbn = normalizeISBN(raw);
     if (!isbn) return;
 
-    // Check if this ISBN already exists in the current group
-    const existingInGroup = items.find(
-      (item) => item.isbn === isbn && item.groupId === activeGroupId
-    );
+    // If we're already processing an ISBN, ignore this scan
+    if (isProcessingISBN) return;
 
-    if (existingInGroup) {
-      setStatus(
-        `"${existingInGroup.title}" is already in ${
-          groups.find((g) => g.id === activeGroupId)?.name || 'this group'
-        }`
-      );
-      return;
-    }
+    // Stop scanning and mark as processing
+    setScanning(false);
+    setIsProcessingISBN(true);
 
     await addISBN(isbn);
   }
@@ -99,6 +93,7 @@ function ScannerInterface() {
 
   function handleFetchComplete() {
     setCurrentISBN(null);
+    setIsProcessingISBN(false);
   }
 
   function addGroup() {
@@ -169,8 +164,9 @@ function ScannerInterface() {
       console.log(`Processing group ${group.name} with ${items.length} items`);
       if (items.length === 0) continue;
 
-      // Create a simple URL for the QR code
-      const text = `${window.location.origin}/group/${group.id}`;
+      // Create a simple URL for the QR code (using basepath from router)
+      const basepath = '/book-scanner';
+      const text = `${window.location.origin}${basepath}/group/${group.id}`;
       console.log(`Generating QR code for ${group.name}:`, text);
 
       try {
@@ -429,19 +425,7 @@ function ScannerInterface() {
                   if (e.key === 'Enter' && manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
-                      // Check if this ISBN already exists in the current group
-                      const existingInGroup = items.find(
-                        (item) => item.isbn === isbn && item.groupId === activeGroupId
-                      );
-                      if (existingInGroup) {
-                        setStatus(
-                          `"${existingInGroup.title}" is already in ${
-                            groups.find((g) => g.id === activeGroupId)?.name || 'this group'
-                          }`
-                        );
-                      } else {
-                        addISBN(isbn);
-                      }
+                      addISBN(isbn);
                     }
                     setManualISBN('');
                   }
@@ -454,19 +438,7 @@ function ScannerInterface() {
                   if (manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
-                      // Check if this ISBN already exists in the current group
-                      const existingInGroup = items.find(
-                        (item) => item.isbn === isbn && item.groupId === activeGroupId
-                      );
-                      if (existingInGroup) {
-                        setStatus(
-                          `"${existingInGroup.title}" is already in ${
-                            groups.find((g) => g.id === activeGroupId)?.name || 'this group'
-                          }`
-                        );
-                      } else {
-                        addISBN(isbn);
-                      }
+                      addISBN(isbn);
                     }
                     setManualISBN('');
                   }
