@@ -1,4 +1,5 @@
 import {createRoute, createRouter, Link} from '@tanstack/react-router';
+import ProtectedRoute from './components/ProtectedRoute';
 import ScannerInterface from './components/ScannerInterface';
 import {rootRoute} from './routes/__root';
 
@@ -6,13 +7,21 @@ import {rootRoute} from './routes/__root';
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: ScannerInterface,
+  component: () => (
+    <ProtectedRoute>
+      <ScannerInterface />
+    </ProtectedRoute>
+  ),
 });
 
 const scannerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scanner',
-  component: ScannerInterface,
+  component: () => (
+    <ProtectedRoute>
+      <ScannerInterface />
+    </ProtectedRoute>
+  ),
 });
 
 const groupRoute = createRoute({

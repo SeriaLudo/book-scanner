@@ -1,4 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react';
+import {useAuth} from '../contexts/AuthContext';
 import {classNames, downloadBlob} from '../utils/generalUtils';
 import {normalizeISBN} from '../utils/scannerUtils';
 import BookList from './BookList';
@@ -23,6 +24,7 @@ interface Group {
 
 // Main Scanner Interface Component
 function ScannerInterface() {
+  const {user, signOut} = useAuth();
   const [items, setItems] = useState<BookItem[]>([]);
   const [groups, setGroups] = useState<Group[]>([{id: 'GROUP-1', name: 'Group 1'}]);
   const [activeGroupId, setActiveGroupId] = useState<string>('GROUP-1');
@@ -308,6 +310,15 @@ function ScannerInterface() {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-0.5 sm:gap-2 w-full">
+              {user && (
+                <button
+                  onClick={signOut}
+                  className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-gray-100 hover:bg-gray-200 min-h-[44px] flex-shrink-0"
+                  title={`Signed in as ${user.email}`}
+                >
+                  Sign Out
+                </button>
+              )}
               <button
                 onClick={() => setScanning((s) => !s)}
                 className={classNames(
