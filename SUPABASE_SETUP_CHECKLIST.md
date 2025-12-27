@@ -22,7 +22,8 @@
 
 ### Database Setup (Local)
 
-- [ ] Open Supabase Studio: `supabase studio` (usually at `http://localhost:54323`)
+- [ ] Open Supabase Studio: Run `npx supabase status` and open the Studio URL shown (usually
+      `http://127.0.0.1:54323`)
 - [ ] Run SQL migrations in SQL Editor:
   - [ ] Create `profiles` table (if needed)
   - [ ] Create `groups` table
@@ -166,8 +167,9 @@ supabase init
 # Start local Supabase (first time takes a few minutes)
 supabase start
 
-# Open Supabase Studio
-supabase studio
+# Open Supabase Studio (check status for URL)
+npx supabase status
+# Then open the Studio URL in your browser (usually http://127.0.0.1:54323)
 
 # Stop local Supabase
 supabase stop

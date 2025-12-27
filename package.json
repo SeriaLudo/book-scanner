@@ -7,20 +7,25 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:stop:force": "supabase stop --no-backup",
+    "supabase:stop:docker": "./scripts/stop-supabase-force.sh",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.86.0",
     "@tanstack/react-query": "^5.90.2",
     "@tanstack/react-router": "^1.132.33",
     "@tanstack/router-devtools": "^1.132.33",
     "@zxing/browser": "^0.1.5",
-    "qrcode": "^1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",

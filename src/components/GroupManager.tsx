@@ -1,15 +1,5 @@
-interface BookItem {
-  id: string;
-  isbn: string;
-  title: string;
-  authors: string[];
-  groupId?: string;
-}
-
-interface Group {
-  id: string;
-  name: string;
-}
+import type {Book} from '../hooks/useBooks';
+import type {Group} from '../hooks/useGroups';
 
 interface GroupManagerProps {
   groups: Group[];
@@ -17,7 +7,7 @@ interface GroupManagerProps {
   onGroupSelect: (groupId: string) => void;
   onRenameGroup: (id: string, name: string) => void;
   onClearGroup: (id: string) => void;
-  itemsByGroup: Map<string, BookItem[]>;
+  itemsByGroup: Map<string, Book[]>;
 }
 
 export default function GroupManager({
@@ -47,7 +37,7 @@ export default function GroupManager({
       <div className="mt-3 space-y-3">
         {groups.map((g) => (
           <div key={g.id} className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="text-xs text-gray-500 w-16 flex-shrink-0">{g.id}</span>
+            <span className="text-xs text-gray-500 w-16 flex-shrink-0">{g.slug}</span>
             <input
               value={g.name}
               onChange={(e) => onRenameGroup(g.id, e.target.value)}

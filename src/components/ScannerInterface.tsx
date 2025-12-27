@@ -1,4 +1,8 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import {useNavigate, useParams} from '@tanstack/react-router';
+import {useEffect, useMemo, useState} from 'react';
+import {useAuth} from '../contexts/AuthContext';
+import {useBooks, type Book} from '../hooks/useBooks';
+import {useGroups} from '../hooks/useGroups';
 import {classNames, downloadBlob} from '../utils/generalUtils';
 import {normalizeISBN} from '../utils/scannerUtils';
 import BookList from './BookList';
@@ -7,25 +11,23 @@ import ISBNFetcher from './ISBNFetcher';
 import PrintLabel from './PrintLabel';
 import Scanner from './Scanner';
 
-// Types
-interface BookItem {
-  id: string; // uuid-ish
-  isbn: string;
-  title: string;
-  authors: string[];
-  groupId?: string;
-}
-
-interface Group {
-  id: string; // e.g., "GROUP-1"
-  name: string; // display name
-}
-
 // Main Scanner Interface Component
 function ScannerInterface() {
-  const [items, setItems] = useState<BookItem[]>([]);
-  const [groups, setGroups] = useState<Group[]>([{id: 'GROUP-1', name: 'Group 1'}]);
-  const [activeGroupId, setActiveGroupId] = useState<string>('GROUP-1');
+  const {user, signOut} = useAuth();
+  const {books, updateBook, deleteBook} = useBooks();
+  const {groups, createGroup, updateGroup} = useGroups();
+  const navigate = useNavigate();
+  const params = useParams({strict: false}) as {groupSlug?: string};
+
+  // Get active group from URL or default to first group
+  const activeGroup = useMemo(() => {
+    if (params?.groupSlug) {
+      return groups.find((g) => g.slug === params.groupSlug);
+    }
+    return groups[0] || null;
+  }, [groups, params?.groupSlug]);
+
+  const activeGroupId = activeGroup?.id || null;
   const [scanning, setScanning] = useState(false);
   const [manualISBN, setManualISBN] = useState('');
   const [status, setStatus] = useState<string>('');
@@ -35,55 +37,31 @@ function ScannerInterface() {
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const [currentISBN, setCurrentISBN] = useState<string | null>(null);
+  const [isProcessingISBN, setIsProcessingISBN] = useState(false);
 
-  // Persist locally (will be replaced with database)
+  // Navigate to first group if no group is selected
   useEffect(() => {
-    const raw = localStorage.getItem('book-group-state-v1');
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed.items) setItems(parsed.items);
-        if (parsed.groups) setGroups(parsed.groups);
-        if (parsed.activeGroupId) setActiveGroupId(parsed.activeGroupId);
-      } catch (error) {
-        alert(
-          `Error loading saved data: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
+    if (groups.length > 0 && !params.groupSlug) {
+      navigate({to: '/scanner/$groupSlug', params: {groupSlug: groups[0].slug}});
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('book-group-state-v1', JSON.stringify({items, groups, activeGroupId}));
-  }, [items, groups, activeGroupId]);
+  }, [groups, params.groupSlug, navigate]);
 
   async function handleScanned(raw: string) {
     const isbn = normalizeISBN(raw);
     if (!isbn) return;
 
-    // Check if this ISBN already exists in the current group
-    const existingInGroup = items.find(
-      (item) => item.isbn === isbn && item.groupId === activeGroupId
-    );
+    // If we're already processing an ISBN, ignore this scan
+    if (isProcessingISBN) return;
 
-    if (existingInGroup) {
-      setStatus(
-        `"${existingInGroup.title}" is already in ${
-          groups.find((g) => g.id === activeGroupId)?.name || 'this group'
-        }`
-      );
-      return;
-    }
+    // Stop scanning and mark as processing
+    setScanning(false);
+    setIsProcessingISBN(true);
 
     await addISBN(isbn);
   }
 
   function addISBN(isbn: string) {
     setCurrentISBN(isbn);
-  }
-
-  function handleBookFetched(item: BookItem) {
-    setItems((xs) => [item, ...xs]);
   }
 
   function handleFetchError(message: string) {
@@ -97,186 +75,75 @@ function ScannerInterface() {
 
   function handleFetchComplete() {
     setCurrentISBN(null);
+    setIsProcessingISBN(false);
   }
 
-  function addGroup() {
+  async function addGroup() {
     const nextIndex = groups.length + 1;
-    const id = `GROUP-${nextIndex}`;
-    setGroups((xs) => [...xs, {id, name: `Group ${nextIndex}`}]);
-    setActiveGroupId(id);
+    const name = `Group ${nextIndex}`;
+    const slug = `group-${nextIndex}`;
+    try {
+      const newGroup = await createGroup({name, slug});
+      navigate({to: '/scanner/$groupSlug', params: {groupSlug: newGroup.slug}});
+    } catch (error) {
+      setStatus(
+        `Failed to create group: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
-  function renameGroup(id: string, name: string) {
-    setGroups((xs) => xs.map((g) => (g.id === id ? {...g, name} : g)));
+  async function renameGroup(id: string, name: string) {
+    try {
+      await updateGroup({id, name});
+    } catch (error) {
+      setStatus(
+        `Failed to rename group: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
-  function moveItemToGroup(itemId: string, groupId: string) {
-    setItems((xs) => xs.map((it) => (it.id === itemId ? {...it, groupId} : it)));
+  async function moveItemToGroup(bookId: string, groupId: string) {
+    try {
+      await updateBook({id: bookId, groupId: groupId || null});
+    } catch (error) {
+      setStatus(`Failed to move book: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  function removeItem(id: string) {
-    setItems((xs) => xs.filter((it) => it.id !== id));
+  async function removeItem(id: string) {
+    try {
+      await deleteBook(id);
+    } catch (error) {
+      setStatus(
+        `Failed to delete book: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
-  function clearGroup(id: string) {
-    setItems((xs) => xs.map((it) => (it.groupId === id ? {...it, groupId: undefined} : it)));
+  async function clearGroup(id: string) {
+    try {
+      const booksInGroup = books.filter((b) => b.group_id === id);
+      await Promise.all(booksInGroup.map((book) => updateBook({id: book.id, groupId: null})));
+    } catch (error) {
+      setStatus(
+        `Failed to clear group: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   const itemsByGroup = useMemo(() => {
-    const map = new Map<string, BookItem[]>();
-    for (const it of items) {
-      const key = it.groupId || 'UNASSIGNED';
+    const map = new Map<string, Book[]>();
+    for (const book of books) {
+      const key = book.group_id || 'UNASSIGNED';
       if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(it);
+      map.get(key)!.push(book);
     }
     return map;
-  }, [items]);
+  }, [books]);
 
   async function exportJSON() {
-    const data = {groups, items};
+    const data = {groups, books};
     downloadBlob('book-groups.json', JSON.stringify(data, null, 2));
-  }
-
-  function onImportJSON(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(String(reader.result));
-        if (data.groups && data.items) {
-          setGroups(data.groups);
-          setItems(data.items);
-          setActiveGroupId(data.groups?.[0]?.id || 'GROUP-1');
-        }
-      } catch (err) {
-        alert(`Invalid JSON: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  async function exportSVGLabels() {
-    console.log('Starting SVG export...');
-    console.log('Groups:', groups);
-    console.log('Items by group:', itemsByGroup);
-
-    for (let i = 0; i < groups.length; i++) {
-      const group = groups[i];
-      const items = itemsByGroup.get(group.id) || [];
-      console.log(`Processing group ${group.name} with ${items.length} items`);
-      if (items.length === 0) continue;
-
-      // Create a simple URL for the QR code
-      const text = `${window.location.origin}/group/${group.id}`;
-      console.log(`Generating QR code for ${group.name}:`, text);
-
-      try {
-        // Generate SVG QR code
-        const QRCode = (await import('qrcode')).default;
-        const svgString = await QRCode.toString(text, {
-          type: 'svg',
-          errorCorrectionLevel: 'M',
-          margin: 1,
-          width: 600,
-        });
-        console.log(`QR code generated for ${group.name}`);
-
-        // Create complete SVG label (384px width = 48mm at 203 DPI)
-        const labelSVG = `
-        <svg width="384" height="256" viewBox="0 0 384 256" xmlns="http://www.w3.org/2000/svg">
-          <rect width="384" height="256" fill="white"/>
-          <text x="192" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold">${
-            group.name
-          }</text>
-          <text x="192" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="12">${
-            items.length
-          } item${items.length === 1 ? '' : 's'}</text>
-          <g transform="translate(32, 50) scale(3)">
-            ${svgString.replace('<svg', '<g').replace('</svg>', '</g>')}
-          </g>
-        </svg>
-      `;
-
-        // Convert SVG to PNG and download
-        console.log(`Converting SVG to PNG for ${group.name}`);
-
-        // Create a temporary div with the SVG
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = labelSVG;
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.top = '-9999px';
-        document.body.appendChild(tempDiv);
-
-        // Convert to canvas then PNG
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-
-        const svgBlob = new Blob([labelSVG], {type: 'image/svg+xml'});
-        const svgUrl = URL.createObjectURL(svgBlob);
-
-        img.onload = () => {
-          try {
-            canvas.width = 384;
-            canvas.height = 256;
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, 384, 256);
-            }
-
-            canvas.toBlob((pngBlob) => {
-              if (pngBlob) {
-                const pngUrl = URL.createObjectURL(pngBlob);
-                const a = document.createElement('a');
-                a.href = pngUrl;
-                a.download = `${group.name.replace(/[^a-zA-Z0-9]/g, '_')}_label.png`;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(pngUrl);
-                URL.revokeObjectURL(svgUrl);
-                document.body.removeChild(tempDiv);
-                console.log(`Downloaded ${group.name}_label.png`);
-              } else {
-                alert(`Failed to convert ${group.name} to PNG`);
-              }
-            }, 'image/png');
-          } catch (error) {
-            alert(
-              `Error converting ${group.name} to PNG: ${
-                error instanceof Error ? error.message : 'Unknown error'
-              }`
-            );
-            document.body.removeChild(tempDiv);
-            URL.revokeObjectURL(svgUrl);
-          }
-        };
-
-        img.onerror = () => {
-          alert(`Failed to load SVG for ${group.name}`);
-          document.body.removeChild(tempDiv);
-          URL.revokeObjectURL(svgUrl);
-        };
-
-        img.src = svgUrl;
-
-        // Add a small delay between downloads to prevent browser blocking
-        if (i < groups.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      } catch (error) {
-        console.error(`Error generating QR code for ${group.name}:`, error);
-        setStatus(`Error generating label for ${group.name}`);
-        alert(
-          `Error generating QR code for ${group.name}: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`
-        );
-      }
-    }
-    console.log('SVG export completed');
   }
 
   function handleCameraChange(cameraId: string) {
@@ -293,7 +160,6 @@ function ScannerInterface() {
       <ISBNFetcher
         isbn={currentISBN}
         activeGroupId={activeGroupId}
-        onBookFetched={handleBookFetched}
         onError={handleFetchError}
         onSuccess={handleFetchSuccess}
         onComplete={handleFetchComplete}
@@ -302,12 +168,21 @@ function ScannerInterface() {
         <div className="w-full px-2 py-2 sm:py-3 flex justify-center">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-4xl">
             <div className="flex-1">
-              <h1 className="text-xl font-semibold">Book Group QR Labeler</h1>
+              <h1 className="text-xl font-semibold">Book Group Labeler</h1>
               <span className="text-sm text-gray-500">
                 Scan ISBN → Fetch Metadata → Print Labels
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-0.5 sm:gap-2 w-full">
+              {user && (
+                <button
+                  onClick={signOut}
+                  className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-gray-100 hover:bg-gray-200 min-h-[44px] flex-shrink-0"
+                  title={`Signed in as ${user.email}`}
+                >
+                  Sign Out
+                </button>
+              )}
               <button
                 onClick={() => setScanning((s) => !s)}
                 className={classNames(
@@ -337,21 +212,6 @@ function ScannerInterface() {
                 className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-white min-h-[44px] flex-shrink-0"
               >
                 Export
-              </button>
-              <label className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-white cursor-pointer min-h-[44px] flex items-center flex-shrink-0">
-                Import
-                <input
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  onChange={onImportJSON}
-                />
-              </label>
-              <button
-                onClick={exportSVGLabels}
-                className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-indigo-600 text-white min-h-[44px] flex-shrink-0"
-              >
-                Export SVG
               </button>
             </div>
           </div>
@@ -384,7 +244,7 @@ function ScannerInterface() {
                   settings and refresh the page.
                 </p>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => globalThis.location.reload()}
                   className="mt-2 px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-medium"
                 >
                   Refresh Page
@@ -418,19 +278,9 @@ function ScannerInterface() {
                   if (e.key === 'Enter' && manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
-                      // Check if this ISBN already exists in the current group
-                      const existingInGroup = items.find(
-                        (item) => item.isbn === isbn && item.groupId === activeGroupId
-                      );
-                      if (existingInGroup) {
-                        setStatus(
-                          `"${existingInGroup.title}" is already in ${
-                            groups.find((g) => g.id === activeGroupId)?.name || 'this group'
-                          }`
-                        );
-                      } else {
-                        addISBN(isbn);
-                      }
+                      addISBN(isbn);
+                    } else {
+                      setStatus('Invalid ISBN format');
                     }
                     setManualISBN('');
                   }
@@ -443,19 +293,9 @@ function ScannerInterface() {
                   if (manualISBN.trim()) {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
-                      // Check if this ISBN already exists in the current group
-                      const existingInGroup = items.find(
-                        (item) => item.isbn === isbn && item.groupId === activeGroupId
-                      );
-                      if (existingInGroup) {
-                        setStatus(
-                          `"${existingInGroup.title}" is already in ${
-                            groups.find((g) => g.id === activeGroupId)?.name || 'this group'
-                          }`
-                        );
-                      } else {
-                        addISBN(isbn);
-                      }
+                      addISBN(isbn);
+                    } else {
+                      setStatus('Invalid ISBN format');
                     }
                     setManualISBN('');
                   }
@@ -469,8 +309,13 @@ function ScannerInterface() {
 
           <GroupManager
             groups={groups}
-            activeGroupId={activeGroupId}
-            onGroupSelect={setActiveGroupId}
+            activeGroupId={activeGroupId || ''}
+            onGroupSelect={(groupId) => {
+              const group = groups.find((g) => g.id === groupId);
+              if (group) {
+                navigate({to: '/scanner/$groupSlug', params: {groupSlug: group.slug}});
+              }
+            }}
             onRenameGroup={renameGroup}
             onClearGroup={clearGroup}
             itemsByGroup={itemsByGroup}
@@ -480,7 +325,7 @@ function ScannerInterface() {
         {/* Right: Item list */}
         <section className="print:hidden">
           <BookList
-            items={items}
+            items={books}
             groups={groups}
             onMoveItem={moveItemToGroup}
             onRemoveItem={removeItem}
