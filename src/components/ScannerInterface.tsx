@@ -146,130 +146,6 @@ function ScannerInterface() {
     downloadBlob('book-groups.json', JSON.stringify(data, null, 2));
   }
 
-  async function exportSVGLabels() {
-    console.log('Starting SVG export...');
-    console.log('Groups:', groups);
-    console.log('Items by group:', itemsByGroup);
-
-    for (let i = 0; i < groups.length; i++) {
-      const group = groups[i];
-      const items = itemsByGroup.get(group.id) || [];
-      console.log(`Processing group ${group.name} with ${items.length} items`);
-      if (items.length === 0) continue;
-
-      // Create a simple URL for the QR code using slug (using basepath from router)
-      const basepath = '/book-scanner';
-      const text = `${window.location.origin}${basepath}/group/${group.slug}`;
-      console.log(`Generating QR code for ${group.name}:`, text);
-
-      try {
-        // Generate SVG QR code
-        const QRCode = (await import('qrcode')).default;
-        const svgString = await QRCode.toString(text, {
-          type: 'svg',
-          errorCorrectionLevel: 'M',
-          margin: 1,
-          width: 600,
-        });
-        console.log(`QR code generated for ${group.name}`);
-
-        // Create complete SVG label (384px width = 48mm at 203 DPI)
-        const labelSVG = `
-        <svg width="384" height="256" viewBox="0 0 384 256" xmlns="http://www.w3.org/2000/svg">
-          <rect width="384" height="256" fill="white"/>
-          <text x="192" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold">${
-            group.name
-          }</text>
-          <text x="192" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="12">${
-            items.length
-          } item${items.length === 1 ? '' : 's'}</text>
-          <g transform="translate(32, 50) scale(3)">
-            ${svgString.replace('<svg', '<g').replace('</svg>', '</g>')}
-          </g>
-        </svg>
-      `;
-
-        // Convert SVG to PNG and download
-        console.log(`Converting SVG to PNG for ${group.name}`);
-
-        // Create a temporary div with the SVG
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = labelSVG;
-        tempDiv.style.position = 'absolute';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.top = '-9999px';
-        document.body.appendChild(tempDiv);
-
-        // Convert to canvas then PNG
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-
-        const svgBlob = new Blob([labelSVG], {type: 'image/svg+xml'});
-        const svgUrl = URL.createObjectURL(svgBlob);
-
-        img.onload = () => {
-          try {
-            canvas.width = 384;
-            canvas.height = 256;
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, 384, 256);
-            }
-
-            canvas.toBlob((pngBlob) => {
-              if (pngBlob) {
-                const pngUrl = URL.createObjectURL(pngBlob);
-                const a = document.createElement('a');
-                a.href = pngUrl;
-                a.download = `${group.name.replace(/[^a-zA-Z0-9]/g, '_')}_label.png`;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(pngUrl);
-                URL.revokeObjectURL(svgUrl);
-                document.body.removeChild(tempDiv);
-                console.log(`Downloaded ${group.name}_label.png`);
-              } else {
-                alert(`Failed to convert ${group.name} to PNG`);
-              }
-            }, 'image/png');
-          } catch (error) {
-            alert(
-              `Error converting ${group.name} to PNG: ${
-                error instanceof Error ? error.message : 'Unknown error'
-              }`
-            );
-            document.body.removeChild(tempDiv);
-            URL.revokeObjectURL(svgUrl);
-          }
-        };
-
-        img.onerror = () => {
-          alert(`Failed to load SVG for ${group.name}`);
-          document.body.removeChild(tempDiv);
-          URL.revokeObjectURL(svgUrl);
-        };
-
-        img.src = svgUrl;
-
-        // Add a small delay between downloads to prevent browser blocking
-        if (i < groups.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      } catch (error) {
-        console.error(`Error generating QR code for ${group.name}:`, error);
-        setStatus(`Error generating label for ${group.name}`);
-        alert(
-          `Error generating QR code for ${group.name}: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`
-        );
-      }
-    }
-    console.log('SVG export completed');
-  }
-
   function handleCameraChange(cameraId: string) {
     setSelectedCameraId(cameraId);
     // Restart scanner with new camera
@@ -292,7 +168,7 @@ function ScannerInterface() {
         <div className="w-full px-2 py-2 sm:py-3 flex justify-center">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-4xl">
             <div className="flex-1">
-              <h1 className="text-xl font-semibold">Book Group QR Labeler</h1>
+              <h1 className="text-xl font-semibold">Book Group Labeler</h1>
               <span className="text-sm text-gray-500">
                 Scan ISBN → Fetch Metadata → Print Labels
               </span>
@@ -337,12 +213,6 @@ function ScannerInterface() {
               >
                 Export
               </button>
-              <button
-                onClick={exportSVGLabels}
-                className="px-1 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border bg-indigo-600 text-white min-h-[44px] flex-shrink-0"
-              >
-                Export SVG
-              </button>
             </div>
           </div>
         </div>
@@ -374,7 +244,7 @@ function ScannerInterface() {
                   settings and refresh the page.
                 </p>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => globalThis.location.reload()}
                   className="mt-2 px-3 py-1 bg-red-100 text-red-800 rounded text-sm font-medium"
                 >
                   Refresh Page
@@ -409,6 +279,8 @@ function ScannerInterface() {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
                       addISBN(isbn);
+                    } else {
+                      setStatus('Invalid ISBN format');
                     }
                     setManualISBN('');
                   }
@@ -422,6 +294,8 @@ function ScannerInterface() {
                     const isbn = normalizeISBN(manualISBN.trim());
                     if (isbn) {
                       addISBN(isbn);
+                    } else {
+                      setStatus('Invalid ISBN format');
                     }
                     setManualISBN('');
                   }

@@ -1,6 +1,3 @@
-import QRCode from 'qrcode';
-import {useEffect, useState} from 'react';
-
 interface BookItem {
   id: string;
   isbn: string;
@@ -20,48 +17,11 @@ interface PrintLabelProps {
 }
 
 export default function PrintLabel({group, items}: PrintLabelProps) {
-  const [qrSrc, setQrSrc] = useState<string>('');
-
-  useEffect(() => {
-    const generateQR = async () => {
-      const payload = {
-        groupId: group.id,
-        name: group.name,
-        items: items.map((it) => ({
-          isbn: it.isbn,
-          title: it.title,
-          a: it.authors,
-        })),
-        v: 1,
-      };
-      const text = JSON.stringify(payload);
-      const svgString = await QRCode.toString(text, {
-        type: 'svg',
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        width: 300,
-      });
-      setQrSrc(svgString);
-    };
-
-    generateQR();
-  }, [group, items]);
-
   return (
     <div className="print:border print:border-gray-300 print:p-8 print:break-inside-avoid print:mb-0">
       <div className="print:text-2xl print:font-bold print:mb-2 print:mt-0">{group.name}</div>
       <div className="print:text-sm print:text-gray-700 print:mb-2">
         {items.length} item{items.length === 1 ? '' : 's'}
-      </div>
-      <div className="print:mt-2">
-        {qrSrc ? (
-          <div
-            className="print:w-40 print:h-40 w-40 h-40"
-            dangerouslySetInnerHTML={{__html: qrSrc}}
-          />
-        ) : (
-          <div className="print:w-40 print:h-40 print:bg-gray-100 w-40 h-40 bg-gray-100" />
-        )}
       </div>
       <ol className="print:mt-2 print:text-xs print:space-y-1">
         {items.slice(0, 10).map((it, i) => (

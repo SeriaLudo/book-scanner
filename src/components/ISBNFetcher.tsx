@@ -23,7 +23,24 @@ export default function ISBNFetcher({
 
   // Handle ISBN processing: when an ISBN is scanned, fetch book data and save to database
   useEffect(() => {
-    if (isbn && bookData && activeGroupId) {
+    if (!isbn) return; // No ISBN to process
+
+    // Check if activeGroupId is missing
+    if (!activeGroupId) {
+      onError('Please select a group before adding a book');
+      onComplete();
+      return;
+    }
+
+    // Handle error case
+    if (error) {
+      onError(`No data found for ${isbn}`);
+      onComplete();
+      return;
+    }
+
+    // Process book when data is available
+    if (bookData) {
       // Save book to database using React Query mutation
       addBook({
         isbn,
@@ -40,10 +57,9 @@ export default function ISBNFetcher({
           onError(`Failed to save book: ${err.message}`);
           onComplete();
         });
-    } else if (isbn && error) {
-      onError(`No data found for ${isbn}`);
-      onComplete();
     }
+    // If bookData is null/undefined but no error yet, the query is still loading
+    // We'll wait for it to complete (either success or error)
   }, [isbn, bookData, error, activeGroupId, addBook, onError, onSuccess, onComplete]);
 
   return null; // This component doesn't render anything
