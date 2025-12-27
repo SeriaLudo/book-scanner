@@ -16,7 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true, // Enable to handle email confirmation callbacks
     // Clear session on refresh token error
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   },

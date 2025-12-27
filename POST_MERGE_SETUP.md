@@ -51,9 +51,12 @@ The migration file `supabase/migrations/20240101000000_create_books_and_groups.s
 
 #### Option B: Cloud/Production
 
-1. Go to your Supabase project → SQL Editor
-2. Copy the contents of `supabase/migrations/20240101000000_create_books_and_groups.sql`
-3. Paste and run it in the SQL Editor
+1. Go to your Supabase project dashboard (https://supabase.com/dashboard)
+2. Click **SQL Editor** in the left sidebar (it's under the "Database" section)
+3. Click **New query** (or use the existing query editor)
+4. Copy the contents of `supabase/migrations/20240101000000_create_books_and_groups.sql`
+5. Paste it into the SQL Editor
+6. Click **Run** (or press Cmd/Ctrl + Enter)
 
 **Verify setup:**
 
@@ -165,6 +168,26 @@ variables during the build. Update the build step:
 **Note:** The workflow file should already be updated to include this. If not, add the `env:`
 section to the build step.
 
+### Configure Supabase Site URL (IMPORTANT!)
+
+**This must be done before users can sign up/login!** Otherwise email confirmation links will point
+to localhost.
+
+1. Go to your Supabase dashboard
+2. Click **Authentication** → **URL Configuration** (in the left sidebar)
+3. Set **Site URL** to your GitHub Pages URL:
+   - Format: `https://yourusername.github.io/book-scanner/` (or your custom domain)
+   - **Note:** Include the trailing slash and the `/book-scanner/` path if that's your basepath
+4. Add **Redirect URLs**:
+   - Add your GitHub Pages URL: `https://yourusername.github.io/book-scanner/**`
+   - The `/**` wildcard allows all paths under your site
+5. Click **Save**
+
+**To find your GitHub Pages URL:**
+
+- Go to your repository → Settings → Pages
+- Your site URL is shown there (e.g., `https://username.github.io/repo-name/`)
+
 ### Complete Deployment Checklist
 
 1. **Create Supabase Cloud project** (if not already done)
@@ -173,26 +196,32 @@ section to the build step.
    - Wait for provisioning (~2 minutes)
 
 2. **Run the database migration**
-   - Go to Supabase dashboard → SQL Editor
+   - Go to Supabase dashboard → SQL Editor (left sidebar)
+   - Click **New query**
    - Copy contents of `supabase/migrations/20240101000000_create_books_and_groups.sql`
-   - Paste and run in SQL Editor
+   - Paste and click **Run** (or Cmd/Ctrl + Enter)
 
-3. **Get your Supabase credentials**
+3. **Configure Site URL** (CRITICAL - see section above)
+   - Authentication → URL Configuration
+   - Set Site URL to your GitHub Pages URL
+   - Add redirect URLs
+
+4. **Get your Supabase credentials**
    - Go to Settings → API
    - Copy the **Project URL** and **anon public** key
 
-4. **Add GitHub repository secrets**
+5. **Add GitHub repository secrets**
    - Repository → Settings → Secrets and variables → Actions
    - Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
 
-5. **Verify workflow is updated**
+6. **Verify workflow is updated**
    - Check `.github/workflows/deploy.yml` includes the `env:` section in the build step
 
-6. **Deploy**
+7. **Deploy**
    - Push to `main` branch (triggers automatic deployment)
    - Or manually trigger via Actions tab → Deploy workflow → Run workflow
 
-7. **Review `SUPABASE_DASHBOARD_CONFIG.md`** for additional production settings:
+8. **Review `SUPABASE_DASHBOARD_CONFIG.md`** for additional production settings:
    - Email configuration
    - Authentication settings
    - Security policies
