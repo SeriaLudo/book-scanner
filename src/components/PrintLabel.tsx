@@ -16,7 +16,7 @@ interface PrintLabelProps {
   items: BookItem[];
 }
 
-export default function PrintLabel({group, items}: PrintLabelProps) {
+export default function PrintLabel({group, items}: Readonly<PrintLabelProps>) {
   return (
     <div className="print:border print:border-gray-300 print:p-8 print:break-inside-avoid print:mb-0">
       <div className="print:text-2xl print:font-bold print:mb-2 print:mt-0">{group.name}</div>
