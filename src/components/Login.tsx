@@ -1,5 +1,8 @@
 import {useState} from 'react';
 import {useAuth} from '../contexts/AuthContext';
+import Button from './ui/Button';
+import TextField from './ui/TextField';
+import ThemeToggle from './ui/ThemeToggle';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -29,13 +32,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-2xl md:text-3xl font-extrabold text-text-primary">
             {isSignUp ? 'Create your account' : 'Sign in to Book Scanner'}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-text-secondary">
             {isSignUp
               ? 'Or sign in if you already have an account'
               : "Or create an account if you don't have one"}
@@ -44,71 +50,57 @@ export default function Login() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div
-              className={`rounded-md p-4 ${
+              className={`rounded-md p-4 border ${
                 error.includes('Check your email')
-                  ? 'bg-green-50 text-green-800 border border-green-200'
-                  : 'bg-red-50 text-red-800 border border-red-200'
+                  ? 'bg-success/10 text-success border-success/20'
+                  : 'bg-error/10 text-error border-error/20'
               }`}
             >
               <p className="text-sm">{error}</p>
             </div>
           )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-              />
-            </div>
+          <div className="space-y-4">
+            <TextField
+              type="email"
+              label="Email address"
+              placeholder="Email address"
+              value={email}
+              onChange={(value) => setEmail(value)}
+              isRequired
+              autoComplete="email"
+            />
+            <TextField
+              type="password"
+              label="Password"
+              placeholder="Password"
+              value={password}
+              onChange={(value) => setPassword(value)}
+              isRequired
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            />
           </div>
 
           <div>
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              isDisabled={loading}
+              className="w-full text-black dark:text-white"
             >
               {loading ? 'Loading...' : isSignUp ? 'Sign up' : 'Sign in'}
-            </button>
+            </Button>
           </div>
 
           <div className="text-center">
-            <button
-              type="button"
-              onClick={() => {
+            <Button
+              variant="ghost"
+              onPress={() => {
                 setIsSignUp(!isSignUp);
                 setError(null);
               }}
-              className="text-sm text-indigo-600 hover:text-indigo-500"
+              className="text-sm"
             >
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

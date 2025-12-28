@@ -216,9 +216,9 @@ export default function Scanner({
   }
 
   return (
-    <div className="border rounded-xl p-2 sm:p-4 bg-white w-full">
-      <h2 className="font-semibold mb-2">Scan ISBN</h2>
-      <div className="aspect-video bg-black/5 rounded-lg flex items-center justify-center overflow-hidden">
+    <div className="border border-border rounded-xl p-2 sm:p-4 bg-surface-elevated w-full">
+      <h2 className="font-semibold mb-2 text-text-primary">Scan ISBN</h2>
+      <div className="aspect-video bg-black/5 dark:bg-black/20 rounded-lg flex items-center justify-center overflow-hidden">
         <video ref={videoRef} className="w-full h-full object-cover" muted playsInline></video>
       </div>
 
@@ -226,7 +226,7 @@ export default function Scanner({
       {availableCameras.length > 1 && (
         <div className="mt-2">
           <div className="flex gap-2 items-center">
-            <label className="block text-sm font-medium text-gray-700">Camera:</label>
+            <label className="block text-sm font-medium text-text-primary">Camera:</label>
             <button
               onClick={() => {
                 const currentIndex = availableCameras.findIndex(
@@ -236,7 +236,7 @@ export default function Scanner({
                 const nextCamera = availableCameras[nextIndex];
                 onCameraChange(nextCamera.deviceId);
               }}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded border"
+              className="px-3 py-1 text-xs bg-accent/10 text-accent rounded border border-accent/20 hover:bg-accent/20 transition-colors"
             >
               Switch Camera
             </button>
@@ -244,7 +244,7 @@ export default function Scanner({
           <select
             value={selectedCameraId}
             onChange={(e) => onCameraChange(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg text-sm mt-1"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm mt-1 bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
           >
             {availableCameras.map((camera, index) => (
               <option key={camera.deviceId} value={camera.deviceId}>
@@ -252,7 +252,7 @@ export default function Scanner({
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-text-tertiary mt-1">
             Click "Switch Camera" or use dropdown to try different cameras
           </p>
         </div>
