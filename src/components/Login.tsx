@@ -65,7 +65,7 @@ export default function Login() {
               label="Email address"
               placeholder="Email address"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e)}
               isRequired
               autoComplete="email"
             />
@@ -74,7 +74,7 @@ export default function Login() {
               label="Password"
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e)}
               isRequired
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
             />
