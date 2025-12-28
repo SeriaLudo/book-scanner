@@ -60,7 +60,7 @@ function ScannerInterface() {
     setScanning(false);
     setIsProcessingISBN(true);
 
-    await addISBN(isbn);
+    addISBN(isbn);
   }
 
   function addISBN(isbn: string) {
@@ -168,6 +168,16 @@ function ScannerInterface() {
     return 'primary';
   }, [scanning, cameraPermission]);
 
+  const scannerButtonText = useMemo(() => {
+    if (scanning) {
+      return 'Stop';
+    }
+    if (cameraPermission === 'denied') {
+      return 'Camera Denied';
+    }
+    return 'Start Scanner';
+  }, [scanning, cameraPermission]);
+
   return (
     <div className="min-h-screen bg-background text-text-primary overflow-x-hidden flex flex-col items-center justify-center">
       <ISBNFetcher
@@ -199,15 +209,12 @@ function ScannerInterface() {
                 </Button>
               )}
               <Button
-                variant={scannerButtonVariant}
+                variant={'secondary'}
                 onPress={() => setScanning((s) => !s)}
                 isDisabled={cameraPermission === 'denied' && !scanning}
                 className="px-0.5 sm:px-4 text-xs sm:text-sm shrink-0"
               >
-                {scanning && 'Stop'}
-                {cameraPermission === 'denied' && 'Camera Denied'}
-
-                {cameraPermission === 'prompt' && 'Start Scanner'}
+                {scannerButtonText}
               </Button>
               <Button
                 variant="secondary"
@@ -230,108 +237,109 @@ function ScannerInterface() {
 
       <main className="w-full px-2 py-2 sm:py-4 grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-6 print:block max-w-4xl">
         {/* Left: Scanner & Add */}
-        <section className="space-y-4 print:hidden">
-          <Scanner
-            scanning={scanning}
-            onScanned={handleScanned}
-            onStatusChange={setStatus}
-            onCameraPermissionChange={setCameraPermission}
-            availableCameras={availableCameras}
-            selectedCameraId={selectedCameraId}
-            onCameraChange={handleCameraChange}
-            onCamerasDetected={setAvailableCameras}
-          />
+        {activeGroupId && (
+          <section className="space-y-4 print:hidden">
+            <Scanner
+              scanning={scanning}
+              onScanned={handleScanned}
+              onStatusChange={setStatus}
+              onCameraPermissionChange={setCameraPermission}
+              availableCameras={availableCameras}
+              selectedCameraId={selectedCameraId}
+              onCameraChange={handleCameraChange}
+              onCamerasDetected={setAvailableCameras}
+            />
+            <Card className="w-full">
+              <h2 className="font-semibold mb-2 text-text-primary">Manual Entry</h2>
+              <p className="text-sm text-text-secondary mt-2">{status}</p>
 
-          <Card className="w-full">
-            <h2 className="font-semibold mb-2 text-text-primary">Manual Entry</h2>
-            <p className="text-sm text-text-secondary mt-2">{status}</p>
+              {/* Camera Permission Status */}
+              {cameraPermission === 'denied' && (
+                <div className="mt-2 p-3 bg-error/10 border border-error/20 rounded-lg">
+                  <p className="text-sm text-error">
+                    <strong>Camera access denied.</strong> Please allow camera access in your
+                    browser settings and refresh the page.
+                  </p>
+                  <Button
+                    variant="danger"
+                    onPress={() => globalThis.location.reload()}
+                    className="mt-2"
+                  >
+                    Refresh Page
+                  </Button>
+                </div>
+              )}
 
-            {/* Camera Permission Status */}
-            {cameraPermission === 'denied' && (
-              <div className="mt-2 p-3 bg-error/10 border border-error/20 rounded-lg">
-                <p className="text-sm text-error">
-                  <strong>Camera access denied.</strong> Please allow camera access in your browser
-                  settings and refresh the page.
-                </p>
+              {cameraPermission === 'prompt' && !scanning && (
+                <div className="mt-2 p-3 bg-accent/10 border border-accent/20 rounded-lg">
+                  <p className="text-sm text-accent">
+                    <strong>Camera permission needed.</strong> Click "Start" to request camera
+                    access.
+                  </p>
+                </div>
+              )}
+
+              {status.includes('HTTPS') && (
+                <div className="mt-2 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                  <p className="text-sm text-warning">
+                    <strong>Camera requires HTTPS:</strong> Modern browsers only allow camera access
+                    over secure connections. Try running with{' '}
+                    <code className="bg-warning/20 px-1 rounded">npm run dev</code> or deploy to
+                    HTTPS.
+                  </p>
+                </div>
+              )}
+              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                <input
+                  value={manualISBN}
+                  onChange={(e) => setManualISBN(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && manualISBN.trim()) {
+                      const isbn = normalizeISBN(manualISBN.trim());
+                      if (isbn) {
+                        addISBN(isbn);
+                      } else {
+                        setStatus('Invalid ISBN format');
+                      }
+                      setManualISBN('');
+                    }
+                  }}
+                  placeholder="Type or paste ISBN and press Enter"
+                  className="flex-1 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder:text-text-tertiary"
+                />
                 <Button
-                  variant="danger"
-                  onPress={() => globalThis.location.reload()}
-                  className="mt-2"
+                  onPress={() => {
+                    if (manualISBN.trim()) {
+                      const isbn = normalizeISBN(manualISBN.trim());
+                      if (isbn) {
+                        addISBN(isbn);
+                      } else {
+                        setStatus('Invalid ISBN format');
+                      }
+                      setManualISBN('');
+                    }
+                  }}
                 >
-                  Refresh Page
+                  Add
                 </Button>
               </div>
-            )}
+            </Card>
 
-            {cameraPermission === 'prompt' && !scanning && (
-              <div className="mt-2 p-3 bg-accent/10 border border-accent/20 rounded-lg">
-                <p className="text-sm text-accent">
-                  <strong>Camera permission needed.</strong> Click "Start" to request camera access.
-                </p>
-              </div>
-            )}
-
-            {status.includes('HTTPS') && (
-              <div className="mt-2 p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                <p className="text-sm text-warning">
-                  <strong>Camera requires HTTPS:</strong> Modern browsers only allow camera access
-                  over secure connections. Try running with{' '}
-                  <code className="bg-warning/20 px-1 rounded">npm run dev</code> or deploy to
-                  HTTPS.
-                </p>
-              </div>
-            )}
-            <div className="mt-3 flex flex-col sm:flex-row gap-2">
-              <input
-                value={manualISBN}
-                onChange={(e) => setManualISBN(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && manualISBN.trim()) {
-                    const isbn = normalizeISBN(manualISBN.trim());
-                    if (isbn) {
-                      addISBN(isbn);
-                    } else {
-                      setStatus('Invalid ISBN format');
-                    }
-                    setManualISBN('');
-                  }
-                }}
-                placeholder="Type or paste ISBN and press Enter"
-                className="flex-1 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder:text-text-tertiary"
-              />
-              <Button
-                onPress={() => {
-                  if (manualISBN.trim()) {
-                    const isbn = normalizeISBN(manualISBN.trim());
-                    if (isbn) {
-                      addISBN(isbn);
-                    } else {
-                      setStatus('Invalid ISBN format');
-                    }
-                    setManualISBN('');
-                  }
-                }}
-              >
-                Add
-              </Button>
-            </div>
-          </Card>
-
-          <GroupManager
-            groups={groups}
-            activeGroupId={activeGroupId || ''}
-            onGroupSelect={(groupId) => {
-              const group = groups.find((g) => g.id === groupId);
-              if (group) {
-                navigate({to: '/scanner/$groupSlug', params: {groupSlug: group.slug}});
-              }
-            }}
-            onRenameGroup={renameGroup}
-            onClearGroup={clearGroup}
-            itemsByGroup={itemsByGroup}
-          />
-        </section>
-
+            <GroupManager
+              groups={groups}
+              activeGroupId={activeGroupId || ''}
+              onGroupSelect={(groupId) => {
+                const group = groups.find((g) => g.id === groupId);
+                if (group) {
+                  navigate({to: '/scanner/$groupSlug', params: {groupSlug: group.slug}});
+                }
+              }}
+              onRenameGroup={renameGroup}
+              onClearGroup={clearGroup}
+              itemsByGroup={itemsByGroup}
+            />
+          </section>
+        )}
         {/* Right: Item list */}
         <section className="print:hidden">
           <BookList

@@ -81,7 +81,11 @@ export default function Login() {
           </div>
 
           <div>
-            <Button type="submit" isDisabled={loading} className="w-full">
+            <Button
+              type="submit"
+              isDisabled={loading}
+              className="w-full text-black dark:text-white"
+            >
               {loading ? 'Loading...' : isSignUp ? 'Sign up' : 'Sign in'}
             </Button>
           </div>

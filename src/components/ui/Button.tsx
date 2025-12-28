@@ -8,13 +8,13 @@ interface ButtonProps extends AriaButtonProps {
 
 const variantStyles = {
   primary:
-    'bg-accent text-white hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
+    'bg-blue-600 dark:bg-accent text-white hover:bg-blue-700 dark:hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-accent focus:ring-offset-2',
   secondary:
     'bg-white dark:bg-surface border-2 border-border text-gray-900 dark:text-text-primary hover:bg-gray-50 dark:hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
   ghost:
     'bg-transparent text-text-primary hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
   danger:
-    'bg-error text-white hover:bg-error/90 focus:outline-none focus:ring-2 focus:ring-error focus:ring-offset-2',
+    'bg-red-600 dark:bg-error text-white hover:bg-red-700 dark:hover:bg-error/90 focus:outline-none focus:ring-2 focus:ring-red-500 dark:focus:ring-error focus:ring-offset-2',
 };
 
 export default function Button({
