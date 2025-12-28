@@ -158,16 +158,6 @@ function ScannerInterface() {
     }
   }
 
-  const scannerButtonVariant = useMemo(() => {
-    if (scanning) {
-      return 'danger';
-    }
-    if (cameraPermission === 'denied') {
-      return 'secondary';
-    }
-    return 'primary';
-  }, [scanning, cameraPermission]);
-
   const scannerButtonText = useMemo(() => {
     if (scanning) {
       return 'Stop';
