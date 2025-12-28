@@ -41,7 +41,9 @@ export default function Select({
           flex items-center justify-between
         `}
       >
-        <SelectValue placeholder={placeholder} />
+        <SelectValue>
+          {({isPlaceholder}) => isPlaceholder && placeholder}
+        </SelectValue>
         <span aria-hidden="true" className="text-text-tertiary">
           ▼
         </span>
@@ -56,9 +58,11 @@ export default function Select({
   );
 }
 
-export function SelectItem({children, ...props}: {children: ReactNode; value: string}) {
+export function SelectItem({children, value, ...props}: {children: ReactNode; value: string; className?: string}) {
   return (
     <ListBoxItem
+      id={value}
+      textValue={value}
       className={`
         px-3 py-2 rounded cursor-pointer
         text-text-primary
@@ -66,8 +70,8 @@ export function SelectItem({children, ...props}: {children: ReactNode; value: st
         selected:bg-accent selected:text-white
         hover:bg-surface
         transition-colors duration-150
+        ${props.className || ''}
       `}
-      {...props}
     >
       {children}
     </ListBoxItem>
