@@ -10,7 +10,7 @@ const variantStyles = {
   primary:
     'bg-accent text-white hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
   secondary:
-    'bg-surface border border-border text-text-primary hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
+    'bg-white dark:bg-surface border-2 border-border text-gray-900 dark:text-text-primary hover:bg-gray-50 dark:hover:bg-surface-elevated focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
   ghost:
     'bg-transparent text-text-primary hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
   danger:
