@@ -2,6 +2,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {createRootRoute, Outlet} from '@tanstack/react-router';
 import {TanStackRouterDevtools} from '@tanstack/router-devtools';
 import {AuthProvider} from '../contexts/AuthContext';
+import {ThemeProvider} from '../contexts/ThemeContext';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -16,12 +17,14 @@ const queryClient = new QueryClient({
 export const rootRoute = createRootRoute({
   component: () => (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <div className="min-h-screen bg-gray-50 text-gray-900">
-          <Outlet />
-          <TanStackRouterDevtools />
-        </div>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <div className="min-h-screen bg-background text-text-primary">
+            <Outlet />
+            <TanStackRouterDevtools />
+          </div>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   ),
 });

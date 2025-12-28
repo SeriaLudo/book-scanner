@@ -182,6 +182,113 @@ Using Tailwind's default spacing scale (4px base unit):
 - Reduced opacity shadows for subtle depth
 - Focus on border-based elevation instead
 
+### Responsive Design & Breakpoints
+
+Tailwind uses a mobile-first approach. Styles are applied to mobile by default, then enhanced for
+larger screens using breakpoint prefixes.
+
+#### Breakpoint Strategy
+
+```js
+// Tailwind default breakpoints (can be customized in config)
+sm: '640px',   // Small devices (landscape phones)
+md: '768px',   // Medium devices (tablets)
+lg: '1024px',  // Large devices (desktops)
+xl: '1280px',  // Extra large devices (large desktops)
+2xl: '1536px', // 2X large devices (larger desktops)
+```
+
+#### Mobile-First Pattern
+
+Always design for mobile first, then enhance for larger screens:
+
+```tsx
+// Mobile: single column, full width
+// Desktop: two columns, max-width container
+<div className="w-full px-4 md:max-w-4xl md:mx-auto md:grid md:grid-cols-2 md:gap-6">
+  <section className="space-y-4">{/* Mobile: stacked, Desktop: side-by-side */}</section>
+</div>
+```
+
+#### Responsive Typography
+
+```tsx
+// Smaller on mobile, larger on desktop
+<h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">Book Scanner</h1>
+```
+
+#### Touch Targets
+
+- **Minimum size**: 44x44px (iOS) / 48x48px (Material Design)
+- Use `min-h-[44px]` or `min-h-[48px]` for interactive elements
+- Increase padding on mobile: `px-3 py-2 md:px-4 md:py-2`
+
+#### Layout Patterns
+
+**Mobile (< 768px)**:
+
+- Single column layouts
+- Full-width components
+- Stacked navigation
+- Bottom-aligned action buttons
+- Larger touch targets
+- Reduced padding/margins
+
+**Tablet (768px - 1024px)**:
+
+- Two-column grids where appropriate
+- Side-by-side forms
+- Horizontal navigation
+- Medium padding
+
+**Desktop (> 1024px)**:
+
+- Multi-column layouts
+- Max-width containers (e.g., `max-w-6xl mx-auto`)
+- Sidebar navigation
+- Generous whitespace
+- Hover states become important
+
+#### Component-Specific Considerations
+
+**Scanner Component**:
+
+- Mobile: Full-width video, portrait orientation
+- Desktop: Constrained width, landscape orientation
+- Camera controls: Larger buttons on mobile
+
+**Book List**:
+
+- Mobile: Stacked cards, full-width actions
+- Desktop: Grid layout, inline actions
+
+**Forms**:
+
+- Mobile: Stacked inputs, full-width
+- Desktop: Side-by-side where logical, constrained width
+
+**Navigation**:
+
+- Mobile: Hamburger menu or bottom nav
+- Desktop: Horizontal top nav or sidebar
+
+#### Viewport Meta Tag
+
+Ensure proper viewport configuration in `index.html`:
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+```
+
+#### Testing Strategy
+
+- Test on actual devices when possible
+- Use browser DevTools responsive mode
+- Test at breakpoint boundaries (639px, 767px, 1023px, etc.)
+- Verify touch targets are accessible
+- Check text readability at all sizes
+- Ensure no horizontal scrolling on mobile
+
 ## Implementation Plan
 
 ### Phase 1: Setup & Configuration
@@ -328,13 +435,56 @@ import {TextField, Label, Input, FieldError} from '@react-aria/components';
   className={`
   rounded-xl border border-border
   bg-surface-elevated
-  p-6
+  p-4 md:p-6
   shadow-sm
   dark:shadow-none dark:border-border
 `}
 >
   {/* Card content */}
 </div>
+```
+
+### Responsive Component Examples
+
+**Responsive Grid Layout**:
+
+```tsx
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+  {/* Cards stack on mobile, 2 columns on tablet, 3 on desktop */}
+</div>
+```
+
+**Responsive Typography**:
+
+```tsx
+<h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
+  Responsive Heading
+</h1>
+<p className="text-sm md:text-base text-text-secondary">
+  Responsive body text
+</p>
+```
+
+**Responsive Spacing**:
+
+```tsx
+<div className="px-4 py-2 md:px-6 md:py-4 lg:px-8 lg:py-6">
+  {/* More padding on larger screens */}
+</div>
+```
+
+**Responsive Button Sizes**:
+
+```tsx
+<Button
+  className={`
+    px-3 py-2 md:px-4 md:py-2.5
+    text-sm md:text-base
+    min-h-[44px] md:min-h-[40px]
+  `}
+>
+  Responsive Button
+</Button>
 ```
 
 ## Accessibility Considerations
@@ -396,10 +546,18 @@ src/
    colors
 2. **Consistent Spacing**: Use the spacing scale consistently
 3. **Focus States**: Always include visible focus indicators
-4. **Responsive Design**: Mobile-first approach with Tailwind breakpoints
+4. **Responsive Design**:
+   - Mobile-first approach: design for mobile, enhance for desktop
+   - Use Tailwind breakpoints (`sm:`, `md:`, `lg:`, etc.)
+   - Test at breakpoint boundaries
+   - Ensure touch targets are at least 44x44px on mobile
 5. **Component Composition**: Build reusable styled components from React Aria primitives
 6. **Performance**: Use Tailwind's JIT mode for optimal bundle size
-7. **Testing**: Test components in both light and dark modes
+7. **Testing**:
+   - Test components in both light and dark modes
+   - Test on multiple screen sizes (mobile, tablet, desktop)
+   - Verify touch interactions on mobile devices
+   - Check accessibility with keyboard navigation
 
 ## Resources
 
