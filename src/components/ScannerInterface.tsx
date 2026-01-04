@@ -8,6 +8,7 @@ import {normalizeISBN} from '../utils/scannerUtils';
 import BookList from './BookList';
 import GroupManager from './GroupManager';
 import ISBNFetcher from './ISBNFetcher';
+import OpenLibrarySearch from './OpenLibrarySearch';
 import PrintLabel from './PrintLabel';
 import Scanner from './Scanner';
 import Button from './ui/Button';
@@ -238,6 +239,11 @@ function ScannerInterface() {
               selectedCameraId={selectedCameraId}
               onCameraChange={handleCameraChange}
               onCamerasDetected={setAvailableCameras}
+            />
+            <OpenLibrarySearch
+              onBookSelected={(book) => {
+                console.log('Book selected from OpenLibrarySearch:', book);
+              }}
             />
             <Card className="w-full">
               <h2 className="font-semibold mb-2 text-text-primary">Manual Entry</h2>

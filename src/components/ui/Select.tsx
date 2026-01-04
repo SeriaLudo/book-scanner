@@ -48,8 +48,8 @@ export default function Select({
           ▼
         </span>
       </SelectButton>
-      <Popover className="w-[--trigger-width]">
-        <ListBox className="bg-surface-elevated border border-border rounded-md shadow-lg p-1 max-h-60 overflow-auto">
+      <Popover className="w-[--trigger-width] z-50">
+        <ListBox className="bg-surface-elevated border border-border rounded-md shadow-lg p-1 max-h-60 overflow-auto backdrop-blur-sm">
           {children}
         </ListBox>
       </Popover>
