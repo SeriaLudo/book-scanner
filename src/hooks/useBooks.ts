@@ -1,17 +1,6 @@
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useAuth} from '../contexts/AuthContext';
-import {supabase} from '../lib/supabase';
-
-// Helper to handle auth errors
-async function handleAuthError(error: any) {
-  if (
-    error?.code === 'PGRST301' ||
-    error?.message?.includes('JWT') ||
-    error?.message?.includes('refresh_token')
-  ) {
-    await supabase.auth.signOut();
-  }
-}
+import {apiRequest} from '../lib/api';
 
 export interface Book {
   id: string;
@@ -32,31 +21,16 @@ export interface BookInsert {
 }
 
 export function useBooks(groupId?: string | null) {
-  const {user} = useAuth();
+  const {user, getIdToken} = useAuth();
   const queryClient = useQueryClient();
 
   const {data: books = [], isLoading} = useQuery({
     queryKey: ['books', user?.id, groupId],
     queryFn: async () => {
       if (!user) return [];
-
-      let query = supabase
-        .from('books')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', {ascending: false});
-
-      if (groupId) {
-        query = query.eq('group_id', groupId);
-      }
-
-      const {data, error} = await query;
-
-      if (error) {
-        await handleAuthError(error);
-        throw error;
-      }
-      return (data as Book[]) || [];
+      const token = await getIdToken();
+      const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+      return apiRequest<Book[]>(`/api/books${query}`, {token});
     },
     enabled: !!user,
   });
@@ -64,24 +38,17 @@ export function useBooks(groupId?: string | null) {
   const addBook = useMutation({
     mutationFn: async (book: BookInsert) => {
       if (!user) throw new Error('Not authenticated');
-
-      const {data, error} = await supabase
-        .from('books')
-        .insert({
-          user_id: user.id,
+      const token = await getIdToken();
+      return apiRequest<Book>('/api/books', {
+        method: 'POST',
+        token,
+        body: {
           isbn: book.isbn,
           title: book.title,
           authors: book.authors,
           group_id: book.group_id || null,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        await handleAuthError(error);
-        throw error;
-      }
-      return data as Book;
+        },
+      });
     },
     onSettled: () => {
       // Invalidate all book queries for this user
@@ -93,18 +60,12 @@ export function useBooks(groupId?: string | null) {
 
   const updateBook = useMutation({
     mutationFn: async ({id, groupId}: {id: string; groupId: string | null}) => {
-      const {data, error} = await supabase
-        .from('books')
-        .update({group_id: groupId, updated_at: new Date().toISOString()})
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        await handleAuthError(error);
-        throw error;
-      }
-      return data as Book;
+      const token = await getIdToken();
+      return apiRequest<Book>(`/api/books/${id}`, {
+        method: 'PATCH',
+        token,
+        body: {group_id: groupId},
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({queryKey: ['books', user?.id]});
@@ -114,11 +75,8 @@ export function useBooks(groupId?: string | null) {
 
   const deleteBook = useMutation({
     mutationFn: async (id: string) => {
-      const {error} = await supabase.from('books').delete().eq('id', id);
-      if (error) {
-        await handleAuthError(error);
-        throw error;
-      }
+      const token = await getIdToken();
+      await apiRequest<void>(`/api/books/${id}`, {method: 'DELETE', token});
     },
     onSettled: () => {
       queryClient.invalidateQueries({queryKey: ['books', user?.id]});

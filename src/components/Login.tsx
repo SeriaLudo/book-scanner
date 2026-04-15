@@ -20,7 +20,7 @@ export default function Login() {
     try {
       if (isSignUp) {
         await signUp(email, password);
-        setError('Check your email to confirm your account!');
+        setError('Account created. You are now signed in.');
       } else {
         await signIn(email, password);
       }
@@ -51,7 +51,7 @@ export default function Login() {
           {error && (
             <div
               className={`rounded-md p-4 border ${
-                error.includes('Check your email')
+                error.includes('Account created')
                   ? 'bg-success/10 text-success border-success/20'
                   : 'bg-error/10 text-error border-error/20'
               }`}

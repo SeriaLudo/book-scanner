@@ -1,88 +1,56 @@
-import type {Session, User} from '@supabase/supabase-js';
 import {createContext, useContext, useEffect, useState} from 'react';
-import {supabase} from '../lib/supabase';
+import type {User} from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from 'firebase/auth';
+import {auth} from '../lib/firebase';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  getIdToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({children}: {children: React.ReactNode}) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth
-      .getSession()
-      .then(({data: {session}, error}) => {
-        if (error) {
-          console.error('Error getting session:', error);
-          // If refresh token is invalid, clear the session
-          if (error.message?.includes('refresh_token')) {
-            supabase.auth.signOut();
-          }
-          setSession(null);
-          setUser(null);
-        } else {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Error initializing auth:', error);
-        // Clear session on error
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-      });
-
-    // Listen for auth changes
-    const {
-      data: {subscription},
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      // Handle token refresh errors
-      if (event === 'TOKEN_REFRESHED') {
-        setSession(session);
-        setUser(session?.user ?? null);
-      } else if (event === 'SIGNED_OUT' || !session) {
-        setSession(null);
-        setUser(null);
-      } else {
-        setSession(session);
-        setUser(session?.user ?? null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      setUser(nextUser);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return unsubscribe;
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const {error} = await supabase.auth.signInWithPassword({email, password});
-    if (error) throw error;
+    await signInWithEmailAndPassword(auth, email, password);
   };
 
   const signUp = async (email: string, password: string) => {
-    const {error} = await supabase.auth.signUp({email, password});
-    if (error) throw error;
+    await createUserWithEmailAndPassword(auth, email, password);
   };
 
   const signOut = async () => {
-    const {error} = await supabase.auth.signOut();
-    if (error) throw error;
+    await firebaseSignOut(auth);
+  };
+
+  const getIdToken = async () => {
+    if (!auth.currentUser) return null;
+    return auth.currentUser.getIdToken();
   };
 
   return (
-    <AuthContext.Provider value={{user, session, loading, signIn, signUp, signOut}}>
+    <AuthContext.Provider value={{user, loading, signIn, signUp, signOut, getIdToken}}>
       {children}
     </AuthContext.Provider>
   );
