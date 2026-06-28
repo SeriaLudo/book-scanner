@@ -15,7 +15,8 @@ and generating QR code labels.
 - **Group Management**: Organize scanned books into custom groups
 - **QR Code Label Generation**: Generate printable QR code labels for each group that link back to
   view the group's contents
-- **Data Persistence**: Currently uses browser localStorage to save your book collection
+- **Data Persistence**: Persists books and groups to a self-hosted Postgres database through the app server
+- **Inventory Fields**: Track user-selected condition and format for each scanned book
 - **Export/Import**: Export your data as JSON or import previously exported data
 
 ## How It Works
@@ -28,7 +29,10 @@ and generating QR code labels.
 ## Technology Stack
 
 - **React 19** with TypeScript
-- **Vite** for build tooling
+- **Vite** for client build tooling
+- **Hono** for the server API
+- **Clerk** for authentication
+- **Postgres + Drizzle ORM** for persistence
 - **TanStack Query** for data fetching and caching
 - **TanStack Router** for routing
 - **ZXing** for barcode scanning
@@ -39,44 +43,55 @@ and generating QR code labels.
 ### Prerequisites
 
 - Node.js (v18 or higher recommended)
-- npm or yarn
+- pnpm
+- Docker
+- Clerk application keys
 
 ### Installation
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Development
 
 ```bash
-npm run dev
+docker compose up -d postgres
+pnpm db:migrate
+pnpm dev
 ```
 
-The app will be available at `http://localhost:5173` (or the port Vite assigns).
+The client runs at `http://localhost:5173` and the server runs at `http://localhost:8787`.
+Copy `.env.example`, `client/.env.example`, and `server/.env.example` before starting.
 
 ### Building for Production
 
 ```bash
-npm run build
+pnpm build
 ```
 
-The built files will be in the `dist/` directory.
+The built client files will be in `client/dist/`.
 
 ## Projected Roadmap
 
-### Phase 1: Supabase Integration
+### Phase 1: Self-Hosted Persistence
 
-- **Database Migration**: Replace localStorage with Supabase PostgreSQL database
-  - User authentication and multi-user support
+- **Database Migration**: Store inventory in Postgres through the server API
+  - Clerk authentication and multi-user support
   - Persistent storage across devices
-  - Real-time data synchronization
 - **Enhanced Features**:
   - User accounts and authentication
   - Cloud backup of book collections
   - Multi-device access
+  - Condition and format tracking
 
-### Phase 2: Marketplace Integration
+### Phase 2: Catalog Improvements
+
+- Better book condition workflows
+- User-selected format defaults for fast scanning
+- Search/filtering by group, condition, and format
+
+### Phase 3: Marketplace Integration
 
 - **eBay API Integration** (if possible):
   - List books directly to eBay from the app
@@ -99,7 +114,7 @@ The built files will be in the `dist/` directory.
 ## Notes
 
 - Camera access requires HTTPS in production (or localhost for development)
-- The app currently stores all data locally in your browser
+- Marketplace integrations should call external seller APIs from the server only
 - QR code labels link to a viewable group page that can be accessed from any device
 
 ## License
