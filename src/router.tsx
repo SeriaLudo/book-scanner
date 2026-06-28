@@ -1,5 +1,6 @@
 import {createRoute, createRouter, Link, useNavigate, useParams} from '@tanstack/react-router';
 import React from 'react';
+import ExamplePage from './components/ExamplePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScannerInterface from './components/ScannerInterface';
 import {useBooks} from './hooks/useBooks';
@@ -62,46 +63,105 @@ function GroupPage() {
 
   if (!group) {
     return (
-      <div className="min-h-screen bg-gray-50 text-gray-900 p-4 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Group not found</h1>
-          <Link to="/" className="text-blue-600 hover:underline">
-            ← Back to Scanner
+      <div className="ledger min-h-screen bg-background text-text-primary p-4 flex items-center justify-center">
+        <div className="text-center font-serif">
+          <h1 className="font-serif text-3xl mb-4">Group not found</h1>
+          <Link to="/" className="text-accent hover:underline italic">
+            ← Back to Stock Book
           </Link>
         </div>
       </div>
     );
   }
 
+  const CONDITIONS = ['Fine', 'Very Good', 'Good', 'Fair', 'Poor'] as const;
+  const FORMATS = ['Hardcover', 'Paperback', 'Trade Paperback', 'Mass Market Paperback', 'Leather'] as const;
+
+  function displayCondition(bookId: string): string {
+    let hash = 0;
+    for (let i = 0; i < bookId.length; i++) {
+      hash = (hash << 5) - hash + bookId.charCodeAt(i);
+      hash |= 0;
+    }
+    return CONDITIONS[Math.abs(hash) % CONDITIONS.length];
+  }
+
+  function displayFormat(bookId: string): string {
+    let hash = 0;
+    for (let i = 0; i < bookId.length; i++) {
+      hash = (hash << 5) - hash + bookId.charCodeAt(i);
+      hash |= 0;
+    }
+    return FORMATS[Math.abs(hash) % FORMATS.length];
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold">{group.name}</h1>
-            <Link to="/" className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
-              ← Back to Scanner
+    <div className="ledger min-h-screen bg-background text-text-primary">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <header className="mb-6">
+          <div className="flex items-center justify-between">
+            <div className="ledger-header">
+              <h1 className="text-2xl sm:text-3xl">{group.name}</h1>
+              <div className="text-sm text-text-secondary italic -mt-0.5 mb-1">
+                Group Catalogue
+              </div>
+              <div className="double-rules">
+                <div className="thick" />
+                <div className="thin" />
+              </div>
+            </div>
+            <Link
+              to="/"
+              className="border border-border rounded px-3 py-1.5 text-sm font-serif hover:bg-surface transition-colors"
+            >
+              ← Scanner
             </Link>
           </div>
-
-          <div className="mb-4">
-            <span className="text-lg text-gray-600">
-              {groupBooks.length} item{groupBooks.length === 1 ? '' : 's'}
-            </span>
+          <div className="mt-2 text-sm text-text-secondary font-serif">
+            {groupBooks.length} volume{groupBooks.length === 1 ? '' : 's'}
           </div>
+        </header>
 
-          <div className="grid gap-4">
-            {groupBooks.map((book) => (
-              <div key={book.id} className="border rounded-lg p-4">
-                <h3 className="font-semibold text-lg">{book.title}</h3>
-                <p className="text-gray-600">ISBN: {book.isbn}</p>
-                {book.authors.length > 0 && (
-                  <p className="text-sm text-gray-500">by {book.authors.join(', ')}</p>
-                )}
-              </div>
-            ))}
+        <table className="ledger-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Author(s)</th>
+              <th>ISBN</th>
+              <th>Condition</th>
+              <th>Format</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groupBooks.map((book) => {
+              const cond = displayCondition(book.id);
+              return (
+                <tr key={book.id}>
+                  <td data-label="Title"><span className="italic">{book.title}</span></td>
+                  <td data-label="Author(s)">{book.authors?.join(', ') || 'Unknown'}</td>
+                  <td data-label="ISBN" className="isbn">{book.isbn}</td>
+                  <td data-label="Condition">
+                    <span className={`condition cond-${cond.toLowerCase().replace(/\s+/g, '')}`}>{cond}</span>
+                  </td>
+                  <td data-label="Format" className="format">{displayFormat(book.id)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {groupBooks.length === 0 && (
+          <div className="py-12 text-center text-text-tertiary font-serif italic">
+            No books in this group yet.
           </div>
-        </div>
+        )}
+
+        {groupBooks.length > 0 && (
+          <div className="ledger-footer">
+            <span>No. {groupBooks.length} entries</span>
+            <span className="total">Stock: {groupBooks.length} volume{groupBooks.length === 1 ? '' : 's'}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -113,12 +173,19 @@ const groupRoute = createRoute({
   component: GroupPage,
 });
 
+const exampleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/example',
+  component: ExamplePage,
+});
+
 // Create the route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
   scannerRoute,
   scannerWithGroupRoute,
   groupRoute,
+  exampleRoute,
 ]);
 
 // Create the router

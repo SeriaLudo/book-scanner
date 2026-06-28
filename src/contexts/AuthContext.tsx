@@ -19,15 +19,20 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const client = supabase;
+    if (!client) {
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
-    supabase.auth
+    client.auth
       .getSession()
       .then(({data: {session}, error}) => {
         if (error) {
           console.error('Error getting session:', error);
-          // If refresh token is invalid, clear the session
           if (error.message?.includes('refresh_token')) {
-            supabase.auth.signOut();
+            client.auth.signOut();
           }
           setSession(null);
           setUser(null);
@@ -39,7 +44,6 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       })
       .catch((error) => {
         console.error('Error initializing auth:', error);
-        // Clear session on error
         setSession(null);
         setUser(null);
         setLoading(false);
@@ -48,8 +52,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     // Listen for auth changes
     const {
       data: {subscription},
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      // Handle token refresh errors
+    } = client.auth.onAuthStateChange((event, session) => {
       if (event === 'TOKEN_REFRESHED') {
         setSession(session);
         setUser(session?.user ?? null);
@@ -67,16 +70,19 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     const {error} = await supabase.auth.signInWithPassword({email, password});
     if (error) throw error;
   };
 
   const signUp = async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     const {error} = await supabase.auth.signUp({email, password});
     if (error) throw error;
   };
 
   const signOut = async () => {
+    if (!supabase) return;
     const {error} = await supabase.auth.signOut();
     if (error) throw error;
   };
