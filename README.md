@@ -72,6 +72,10 @@ pnpm build
 
 The built client files will be in `client/dist/`.
 
+### Deployment
+
+The current deployment target is Netlify for the client, an Azure VM for the backend API, and Azure Database for PostgreSQL Flexible Server for persistence. See [DEPLOYMENT.md](DEPLOYMENT.md) for the active runbook.
+
 ## Projected Roadmap
 
 ### Phase 1: Self-Hosted Persistence

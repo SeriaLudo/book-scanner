@@ -190,7 +190,6 @@ const routeTree = rootRoute.addChildren([
 // Create the router
 export const router = createRouter({
   routeTree,
-  basepath: '/book-scanner/',
 });
 
 // Register the router instance for type safety

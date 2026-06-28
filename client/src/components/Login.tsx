@@ -38,9 +38,9 @@ export default function Login({mode = 'sign-in'}: Readonly<LoginProps>) {
 
         <div className="flex justify-center">
           {isSignUp ? (
-            <SignUp routing="hash" signInUrl="/book-scanner/sign-in" />
+            <SignUp routing="hash" signInUrl="/sign-in" />
           ) : (
-            <SignIn routing="hash" signUpUrl="/book-scanner/sign-up" />
+            <SignIn routing="hash" signUpUrl="/sign-up" />
           )}
         </div>
 
