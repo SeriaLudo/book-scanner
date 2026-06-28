@@ -104,9 +104,8 @@ The deployment workflow is `.github/workflows/deploy.yml`. It runs on pushes to 
 The workflow:
 
 - sets up Node 24 and pnpm,
-- builds the client with production Vite environment variables,
+- builds the client as a validation step,
 - builds the server as a validation step,
-- deploys the client artifact to Netlify with the Netlify CLI,
 - SSHes into the Azure VM,
 - pulls `main` in the VM checkout,
 - installs dependencies,
@@ -117,10 +116,6 @@ The workflow:
 Required GitHub Actions secrets:
 
 ```bash
-VITE_API_URL=https://your-api-host.example
-VITE_CLERK_PUBLISHABLE_KEY=pk_live_...
-NETLIFY_AUTH_TOKEN=...
-NETLIFY_SITE_ID=...
 AZURE_VM_HOST=...
 AZURE_VM_USER=...
 AZURE_VM_SSH_KEY=...
@@ -131,6 +126,8 @@ AZURE_APP_DIR=/opt/book-scanner
 `AZURE_VM_PORT` and `AZURE_APP_DIR` are optional if the defaults are correct.
 
 The VM must already have the repo cloned at `AZURE_APP_DIR`, Node 24, pnpm, access to the Git remote, and either PM2 or a `book-scanner-api` systemd service.
+
+Netlify owns the client deploy from `main`. GitHub Actions only validates the client build and deploys the server.
 
 ## Netlify Client Setup
 
@@ -154,9 +151,8 @@ The app now builds for the domain root (`/`). Netlify SPA routing is configured 
 External Netlify setup needed:
 
 - Create or connect the Netlify site.
-- Add `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` in Netlify if Netlify builds directly from the repo.
-- Add `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` in GitHub if GitHub Actions deploys the client.
-- Avoid enabling both Netlify automatic production deploys and the GitHub Actions Netlify deploy unless duplicate deploys are acceptable.
+- Enable Netlify production deploys from `main`.
+- Add `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` in Netlify.
 
 ## Clerk Production Setup
 
@@ -178,8 +174,8 @@ For production:
 5. Clone the repo to `/opt/book-scanner` on the VM, or set `AZURE_APP_DIR` to the chosen path.
 6. Configure the backend environment on the Azure VM.
 7. Build and start the server once under PM2 or systemd.
-8. Configure GitHub Actions secrets for Netlify and Azure VM deployment.
-9. Configure Netlify with `VITE_API_URL` pointing at the Azure API if Netlify builds directly.
+8. Configure GitHub Actions secrets for Azure VM deployment.
+9. Configure Netlify with `VITE_API_URL` pointing at the Azure API and production deploys from `main`.
 10. Update Clerk domains and redirect URLs for root-path routes.
 11. Merge to `main` and let GitHub Actions deploy the client and server.
 12. Confirm `/health` works from your Mac.

@@ -41,32 +41,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build client
         run: pnpm --filter @book-scanner/client build
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
       - name: Build server
         run: pnpm --filter @book-scanner/server build
-      - name: Upload client artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: client-dist
-          path: ./client/dist
-
-  deploy-client:
-    name: Deploy client to Netlify
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Download client artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: client-dist
-          path: client/dist
-      - name: Deploy to Netlify
-        run: npx --yes netlify-cli@latest deploy --prod --dir=client/dist --site="$NETLIFY_SITE_ID" --auth="$NETLIFY_AUTH_TOKEN"
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
   deploy-server:
     name: Deploy server to Azure VM

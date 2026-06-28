@@ -76,7 +76,6 @@ Merges to `main` run `.github/workflows/deploy.yml`.
 The workflow:
 
 - builds the client and server with Node 24,
-- deploys `client/dist` to Netlify,
 - SSHes into the Azure VM,
 - pulls `main`,
 - installs dependencies,
@@ -87,10 +86,6 @@ The workflow:
 Required GitHub Actions secrets:
 
 ```bash
-VITE_API_URL=https://your-api-host.example
-VITE_CLERK_PUBLISHABLE_KEY=pk_live_...
-NETLIFY_AUTH_TOKEN=...
-NETLIFY_SITE_ID=...
 AZURE_VM_HOST=...
 AZURE_VM_USER=...
 AZURE_VM_SSH_KEY=...
@@ -99,6 +94,8 @@ AZURE_APP_DIR=/opt/book-scanner
 ```
 
 `AZURE_VM_PORT` and `AZURE_APP_DIR` are optional if the defaults match the VM.
+
+Netlify owns the client deploy. GitHub Actions only validates the client build and deploys the server.
 
 ## Netlify Client Setup
 
@@ -116,11 +113,8 @@ which rewrites all paths to `/index.html`.
 External Netlify setup needed:
 
 - Create or connect a Netlify site.
-- Add `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` in Netlify if Netlify builds the client
-  directly.
-- Add `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` in GitHub if GitHub Actions deploys the client.
-- Avoid enabling both Netlify automatic production deploys and the GitHub Actions Netlify deploy
-  unless duplicate deploys are acceptable.
+- Enable Netlify production deploys from `main`.
+- Add `VITE_API_URL` and `VITE_CLERK_PUBLISHABLE_KEY` in Netlify.
 
 ## Clerk Production Setup
 
@@ -139,8 +133,8 @@ External Netlify setup needed:
 4. Clone the repo to `/opt/book-scanner` on the VM, or set `AZURE_APP_DIR` to the chosen path.
 5. Configure the server `.env` or process environment on the VM.
 6. Start the backend once with PM2 or create a `book-scanner-api` systemd service.
-7. Configure GitHub Actions secrets for Netlify and Azure VM deployment.
-8. Configure Netlify environment variables if Netlify also builds from the repo.
+7. Configure GitHub Actions secrets for Azure VM deployment.
+8. Configure Netlify environment variables and production deploys from `main`.
 9. Update Clerk production domains and redirects for root-path routes.
 10. Merge to `main` and let GitHub Actions deploy the client and server.
 11. Confirm the API `/health` endpoint works from your Mac.
