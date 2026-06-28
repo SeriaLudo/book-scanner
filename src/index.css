@@ -14,6 +14,8 @@
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
+  color-scheme: light;
+
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
@@ -25,21 +27,23 @@
 }
 
 .dark {
-  --color-background: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-elevated: #334155;
-  --color-border: #475569;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
-  --color-text-tertiary: #94a3b8;
-  --color-accent: #60a5fa;
-  --color-accent-hover: #3b82f6;
-  --color-success: #34d399;
-  --color-error: #f87171;
-  --color-warning: #fbbf24;
+  --color-background: #1a1510;
+  --color-surface: #241e16;
+  --color-surface-elevated: #2e261c;
+  --color-border: #6b5344;
+  --color-text-primary: #ede4d3;
+  --color-text-secondary: #c9b896;
+  --color-text-tertiary: #9a8868;
+  --color-accent: #d4c4a0;
+  --color-accent-hover: #ede4d3;
+  --color-success: #7cb88a;
+  --color-error: #c47a7a;
+  --color-warning: #c4b86a;
+
+  color-scheme: dark;
 }
 
-/* ─── Ledger Theme ─── */
+/* ─── Ledger Theme (19th-century stock book) ─── */
 .ledger {
   --color-background: #e8dcc8;
   --color-surface: #ece2cc;
@@ -54,23 +58,41 @@
   --color-error: #7a2a2a;
   --color-warning: #7a6a2a;
 
+  --color-table-rule: #7a5f4a;
+  --color-table-hover: rgba(44, 24, 16, 0.06);
+
+  --cond-fine: #1a5c2a;
+  --cond-vg: #3a6b35;
+  --cond-good: #7a6a2a;
+  --cond-fair: #8b4a2a;
+  --cond-poor: #7a2a2a;
+
   font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
   font-weight: 400;
 }
 
-.dark.ledger {
-  --color-background: #2c2416;
-  --color-surface: #3a3020;
-  --color-surface-elevated: #4a3d28;
+.dark .ledger {
+  --color-background: #1a1510;
+  --color-surface: #241e16;
+  --color-surface-elevated: #2e261c;
   --color-border: #8b7355;
-  --color-text-primary: #e8dcc8;
-  --color-text-secondary: #c4b48a;
-  --color-text-tertiary: #a09070;
-  --color-accent: #c4b48a;
-  --color-accent-hover: #e8dcc8;
-  --color-success: #4ade80;
-  --color-error: #f87171;
-  --color-warning: #fbbf24;
+  --color-text-primary: #ede4d3;
+  --color-text-secondary: #c9b896;
+  --color-text-tertiary: #9a8868;
+  --color-accent: #d4c4a0;
+  --color-accent-hover: #ede4d3;
+  --color-success: #7cb88a;
+  --color-error: #c47a7a;
+  --color-warning: #c4b86a;
+
+  --color-table-rule: #6b5344;
+  --color-table-hover: rgba(212, 196, 160, 0.08);
+
+  --cond-fine: #8ecf9a;
+  --cond-vg: #a8c896;
+  --cond-good: #c4b86a;
+  --cond-fair: #c4946a;
+  --cond-poor: #c47a7a;
 }
 
 /* ─── Ledger shared patterns ─── */
@@ -131,20 +153,22 @@
   text-align: left;
   padding: 8px 6px 4px;
   white-space: nowrap;
+  color: var(--color-text-primary);
 }
 
 .ledger-table th:not(:last-child) {
-  border-right: 1px solid var(--color-text-tertiary);
+  border-right: 1px solid var(--color-table-rule);
 }
 
 .ledger-table td {
   padding: 6px;
   vertical-align: top;
-  border-bottom: 1px solid var(--color-text-tertiary);
+  border-bottom: 1px solid var(--color-table-rule);
+  color: var(--color-text-primary);
 }
 
 .ledger-table td:not(:last-child) {
-  border-right: 1px solid var(--color-text-tertiary);
+  border-right: 1px solid var(--color-table-rule);
 }
 
 .ledger-table tbody tr {
@@ -152,16 +176,13 @@
 }
 
 .ledger-table tbody tr:hover {
-  background: rgba(44, 24, 16, 0.06);
-}
-
-.dark.ledger .ledger-table tbody tr:hover {
-  background: rgba(200, 180, 138, 0.08);
+  background: var(--color-table-hover);
 }
 
 .ledger-table .isbn {
   font-family: 'Courier New', 'Courier', monospace;
   font-size: 0.78rem;
+  color: var(--color-text-secondary);
 }
 
 .ledger-table .format {
@@ -179,11 +200,11 @@
   letter-spacing: 0.5px;
   padding: 1px 5px;
 }
-.ledger-table .cond-fine     { color: #1a5c2a; }
-.ledger-table .cond-vg       { color: #3a6b35; }
-.ledger-table .cond-good     { color: #7a6a2a; }
-.ledger-table .cond-fair     { color: #8b4a2a; }
-.ledger-table .cond-poor     { color: #7a2a2a; }
+.ledger-table .cond-fine  { color: var(--cond-fine); }
+.ledger-table .cond-vg    { color: var(--cond-vg); }
+.ledger-table .cond-good  { color: var(--cond-good); }
+.ledger-table .cond-fair  { color: var(--cond-fair); }
+.ledger-table .cond-poor  { color: var(--cond-poor); }
 
 /* ─── Ledger footer total ─── */
 .ledger-footer {
