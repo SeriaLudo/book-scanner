@@ -1,11 +1,23 @@
 import {SignIn, SignUp} from '@clerk/clerk-react';
-import {Link} from '@tanstack/react-router';
-import {useState} from 'react';
-import Button from './ui/Button';
+import {Link, useNavigate} from '@tanstack/react-router';
+import {useEffect} from 'react';
+import {useAuth} from '../contexts/AuthContext';
 import ThemeToggle from './ui/ThemeToggle';
 
-export default function Login() {
-  const [isSignUp, setIsSignUp] = useState(false);
+interface LoginProps {
+  mode?: 'sign-in' | 'sign-up';
+}
+
+export default function Login({mode = 'sign-in'}: Readonly<LoginProps>) {
+  const isSignUp = mode === 'sign-up';
+  const {user, loading} = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate({to: '/scanner'});
+    }
+  }, [loading, navigate, user]);
 
   return (
     <div className="ledger min-h-screen bg-background text-text-primary py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
@@ -26,22 +38,19 @@ export default function Login() {
 
         <div className="flex justify-center">
           {isSignUp ? (
-            <SignUp routing="hash" signInUrl={window.location.href} />
+            <SignUp routing="hash" signInUrl="/book-scanner/sign-in" />
           ) : (
-            <SignIn routing="hash" signUpUrl={window.location.href} />
+            <SignIn routing="hash" signUpUrl="/book-scanner/sign-up" />
           )}
         </div>
 
         <div className="text-center">
-          <Button
-            variant="ghost"
-            onPress={() => {
-              setIsSignUp(!isSignUp);
-            }}
-            className="text-sm"
+          <Link
+            to={isSignUp ? '/sign-in' : '/sign-up'}
+            className="inline-block text-sm text-text-secondary hover:text-text-primary underline underline-offset-2 font-serif italic transition-colors"
           >
             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </Button>
+          </Link>
         </div>
 
         <div className="text-center pt-2 border-t border-border">

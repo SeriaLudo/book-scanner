@@ -1,6 +1,7 @@
 import {createRoute, createRouter, Link, useNavigate, useParams} from '@tanstack/react-router';
 import React from 'react';
 import ExamplePage from './components/ExamplePage';
+import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import ScannerInterface from './components/ScannerInterface';
 import {useBooks} from './hooks/useBooks';
@@ -30,6 +31,18 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexPage,
+});
+
+const signInRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign-in',
+  component: () => <Login mode="sign-in" />,
+});
+
+const signUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sign-up',
+  component: () => <Login mode="sign-up" />,
 });
 
 const scannerRoute = createRoute({
@@ -119,7 +132,7 @@ function GroupPage() {
                   <td data-label="Author(s)">{book.authors?.join(', ') || 'Unknown'}</td>
                   <td data-label="ISBN" className="isbn">{book.isbn}</td>
                   <td data-label="Condition">
-                    <span className={`condition cond-${book.condition.replace(/_/g, '')}`}>
+                    <span className={`condition cond-${book.condition.replaceAll('_', '')}`}>
                       {getConditionLabel(book.condition)}
                     </span>
                   </td>
@@ -161,6 +174,8 @@ const exampleRoute = createRoute({
 // Create the route tree
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  signInRoute,
+  signUpRoute,
   scannerRoute,
   scannerWithGroupRoute,
   groupRoute,
