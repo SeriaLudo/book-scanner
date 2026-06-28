@@ -1,4 +1,6 @@
+import {Link} from '@tanstack/react-router';
 import {useState} from 'react';
+import {supabase} from '../lib/supabase';
 import {useAuth} from '../contexts/AuthContext';
 import Button from './ui/Button';
 import TextField from './ui/TextField';
@@ -32,22 +34,31 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
+    <div className="ledger min-h-screen bg-background text-text-primary py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-2xl md:text-3xl font-extrabold text-text-primary">
-            {isSignUp ? 'Create your account' : 'Sign in to Book Scanner'}
-          </h2>
-          <p className="mt-2 text-center text-sm text-text-secondary">
-            {isSignUp
-              ? 'Or sign in if you already have an account'
-              : "Or create an account if you don't have one"}
-          </p>
+        <div className="ledger-header">
+          <h1 className="text-2xl sm:text-3xl">Stock Book</h1>
+          <div className="text-xs sm:text-sm text-text-secondary italic -mt-0.5 mb-1">
+            {isSignUp ? 'Create your account' : 'Sign in to continue'}
+          </div>
+          <div className="double-rules">
+            <div className="thick" />
+            <div className="thin" />
+          </div>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        {!supabase && (
+          <div className="rounded-md p-4 border bg-warning/10 text-warning border-warning/20 text-center">
+            <p className="text-sm font-serif">
+              Supabase is not configured. Sign-in is unavailable.
+            </p>
+          </div>
+        )}
+
+        <form className="mt-8 space-y-6 font-serif" onSubmit={handleSubmit}>
           {error && (
             <div
               className={`rounded-md p-4 border ${
@@ -83,8 +94,8 @@ export default function Login() {
           <div>
             <Button
               type="submit"
-              isDisabled={loading}
-              className="w-full text-black dark:text-white"
+              isDisabled={loading || !supabase}
+              className="w-full"
             >
               {loading ? 'Loading...' : isSignUp ? 'Sign up' : 'Sign in'}
             </Button>
@@ -103,6 +114,15 @@ export default function Login() {
             </Button>
           </div>
         </form>
+
+        <div className="text-center pt-2 border-t border-border">
+          <Link
+            to="/example"
+            className="inline-block text-sm text-text-secondary hover:text-text-primary underline underline-offset-2 font-serif italic transition-colors"
+          >
+            Explore Demo →
+          </Link>
+        </div>
       </div>
     </div>
   );

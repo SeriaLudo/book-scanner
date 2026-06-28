@@ -3,13 +3,18 @@ import {useAuth} from '../contexts/AuthContext';
 import {supabase} from '../lib/supabase';
 
 // Helper to handle auth errors
+function getClient() {
+  if (!supabase) throw new Error('Supabase is not configured');
+  return supabase;
+}
+
 async function handleAuthError(error: any) {
   if (
     error?.code === 'PGRST301' ||
     error?.message?.includes('JWT') ||
     error?.message?.includes('refresh_token')
   ) {
-    await supabase.auth.signOut();
+    await getClient().auth.signOut();
   }
 }
 
@@ -31,7 +36,8 @@ export function useGroups() {
     queryFn: async () => {
       if (!user) return [];
 
-      const {data, error} = await supabase
+      const client = getClient();
+      const {data, error} = await client
         .from('groups')
         .select('*')
         .eq('user_id', user.id)
@@ -50,7 +56,8 @@ export function useGroups() {
     mutationFn: async ({name, slug}: {name: string; slug: string}) => {
       if (!user) throw new Error('Not authenticated');
 
-      const {data, error} = await supabase
+      const client = getClient();
+      const {data, error} = await client
         .from('groups')
         .insert({user_id: user.id, name, slug})
         .select()
@@ -69,7 +76,8 @@ export function useGroups() {
 
   const updateGroup = useMutation({
     mutationFn: async ({id, name}: {id: string; name: string}) => {
-      const {data, error} = await supabase
+      const client = getClient();
+      const {data, error} = await client
         .from('groups')
         .update({name, updated_at: new Date().toISOString()})
         .eq('id', id)
@@ -89,7 +97,8 @@ export function useGroups() {
 
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
-      const {error} = await supabase.from('groups').delete().eq('id', id);
+      const client = getClient();
+      const {error} = await client.from('groups').delete().eq('id', id);
       if (error) {
         await handleAuthError(error);
         throw error;

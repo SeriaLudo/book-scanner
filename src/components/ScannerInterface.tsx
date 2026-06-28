@@ -169,7 +169,7 @@ function ScannerInterface() {
   }, [scanning, cameraPermission]);
 
   return (
-    <div className="min-h-screen bg-background text-text-primary overflow-x-hidden flex flex-col items-center justify-center">
+    <div className="ledger min-h-screen bg-background text-text-primary overflow-x-hidden flex flex-col items-center justify-center">
       <ISBNFetcher
         isbn={currentISBN}
         activeGroupId={activeGroupId}
@@ -180,13 +180,17 @@ function ScannerInterface() {
       <header className="sticky top-0 z-10 bg-surface-elevated/80 backdrop-blur border-b border-border w-full">
         <div className="w-full px-2 py-2 sm:py-3 flex justify-center">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full max-w-4xl">
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold text-text-primary">Book Group Labeler</h1>
-              <span className="text-sm text-text-secondary">
-                Scan ISBN → Fetch Metadata → Print Labels
-              </span>
+            <div className="flex-1 ledger-header">
+              <h1 className="text-xl sm:text-2xl">Stock Book</h1>
+              <div className="text-xs sm:text-sm text-text-secondary italic -mt-0.5 mb-1">
+                Register of Second-Hand Books
+              </div>
+              <div className="double-rules">
+                <div className="thick" />
+                <div className="thin" />
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-0.5 sm:gap-2 w-full">
+            <div className="flex flex-wrap items-center gap-0.5 sm:gap-2 w-full sm:w-auto">
               <ThemeToggle />
               {user && (
                 <Button
@@ -240,7 +244,7 @@ function ScannerInterface() {
               onCamerasDetected={setAvailableCameras}
             />
             <Card className="w-full">
-              <h2 className="font-semibold mb-2 text-text-primary">Manual Entry</h2>
+              <h2 className="font-semibold mb-2 text-text-primary font-serif">Manual Entry</h2>
               <p className="text-sm text-text-secondary mt-2">{status}</p>
 
               {/* Camera Permission Status */}
@@ -295,7 +299,7 @@ function ScannerInterface() {
                     }
                   }}
                   placeholder="Type or paste ISBN and press Enter"
-                  className="flex-1 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder:text-text-tertiary"
+                  className="flex-1 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder:text-text-tertiary"
                 />
                 <Button
                   onPress={() => {
