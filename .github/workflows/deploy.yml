@@ -1,4 +1,4 @@
-name: Deploy React App to GitHub Pages
+name: Deploy
 
 on:
   push:
@@ -7,11 +7,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: 'pages'
+  group: 'production'
   cancel-in-progress: false
 
 jobs:
@@ -20,34 +18,74 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      - name: Copy index.html to 404.html for GitHub Pages SPA routing
-        run: cp ./dist/index.html ./dist/404.html
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+          node-version: '24'
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          path: ./dist
+          run_install: false
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build client
+        run: pnpm --filter @book-scanner/client build
+      - name: Build server
+        run: pnpm --filter @book-scanner/server build
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  deploy-server:
+    name: Deploy server to Azure VM
     runs-on: ubuntu-latest
     needs: build
+    env:
+      AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+      AZURE_VM_PORT: ${{ secrets.AZURE_VM_PORT || '22' }}
+      AZURE_VM_USER: ${{ secrets.AZURE_VM_USER }}
+      AZURE_VM_SSH_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+      AZURE_APP_DIR: ${{ secrets.AZURE_APP_DIR || '/opt/book-scanner' }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy over SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$AZURE_VM_SSH_KEY" > ~/.ssh/azure_vm_key
+          chmod 600 ~/.ssh/azure_vm_key
+          ssh-keyscan -p "$AZURE_VM_PORT" -H "$AZURE_VM_HOST" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/azure_vm_key -p "$AZURE_VM_PORT" "$AZURE_VM_USER@$AZURE_VM_HOST" "AZURE_APP_DIR='$AZURE_APP_DIR' bash -s" <<'REMOTE'
+            set -euo pipefail
+
+            cd "$AZURE_APP_DIR"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            pnpm install --frozen-lockfile
+            pnpm --filter @book-scanner/server build
+
+            if [ -f server/.env ]; then
+              set -a
+              . server/.env
+              set +a
+            fi
+            pnpm --filter @book-scanner/server db:migrate
+
+            if command -v pm2 >/dev/null 2>&1; then
+              pm2 restart book-scanner-api || pm2 start pnpm --name book-scanner-api -- --filter @book-scanner/server start
+              pm2 save
+            else
+              sudo systemctl restart book-scanner-api
+            fi
+          REMOTE
