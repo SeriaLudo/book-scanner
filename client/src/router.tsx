@@ -1,5 +1,6 @@
 import {createRoute, createRouter, Link, useNavigate, useParams} from '@tanstack/react-router';
 import React from 'react';
+import Dashboard from './components/Dashboard';
 import ExamplePage from './components/ExamplePage';
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -9,19 +10,12 @@ import {useGroups} from './hooks/useGroups';
 import {getConditionLabel, getFormatLabel} from './lib/inventory';
 import {rootRoute} from './routes/__root';
 
-// Index page component - redirects to first group or scanner
 function IndexPage() {
   const navigate = useNavigate();
-  const {groups} = useGroups();
 
-  // Redirect to first group if groups exist, otherwise stay on scanner
   React.useEffect(() => {
-    if (groups.length > 0) {
-      navigate({to: '/scanner/$groupSlug', params: {groupSlug: groups[0].slug}});
-    } else {
-      navigate({to: '/scanner'});
-    }
-  }, [groups, navigate]);
+    navigate({to: '/dashboard'});
+  }, [navigate]);
 
   return null;
 }
@@ -43,6 +37,16 @@ const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sign-up',
   component: () => <Login mode="sign-up" />,
+});
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dashboard',
+  component: () => (
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  ),
 });
 
 const scannerRoute = createRoute({
@@ -80,7 +84,7 @@ function GroupPage() {
       <div className="ledger min-h-screen bg-background text-text-primary p-4 flex items-center justify-center">
         <div className="text-center font-serif">
           <h1 className="font-serif text-3xl mb-4">Group not found</h1>
-          <Link to="/" className="text-accent hover:underline italic">
+          <Link to="/dashboard" className="text-accent hover:underline italic">
             ← Back to Stock Book
           </Link>
         </div>
@@ -104,7 +108,7 @@ function GroupPage() {
               </div>
             </div>
             <Link
-              to="/"
+              to="/dashboard"
               className="border border-border rounded px-3 py-1.5 text-sm font-serif hover:bg-surface transition-colors"
             >
               ← Scanner
@@ -176,6 +180,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   signInRoute,
   signUpRoute,
+  dashboardRoute,
   scannerRoute,
   scannerWithGroupRoute,
   groupRoute,

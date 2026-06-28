@@ -34,13 +34,20 @@ export const requireAuth = createMiddleware<AppBindings>(async (c, next) => {
     return c.json({error: 'Missing bearer token'}, 401);
   }
 
+  let payload: Awaited<ReturnType<typeof verifyToken>>;
   try {
-    const payload = await verifyToken(token, {secretKey: env.CLERK_SECRET_KEY});
-    const clerkUserId = payload.sub;
-    if (!clerkUserId) {
-      return c.json({error: 'Invalid Clerk token'}, 401);
-    }
+    payload = await verifyToken(token, {secretKey: env.CLERK_SECRET_KEY});
+  } catch (error) {
+    console.error('Clerk token verification failed', error);
+    return c.json({error: 'Invalid bearer token'}, 401);
+  }
 
+  const clerkUserId = payload.sub;
+  if (!clerkUserId) {
+    return c.json({error: 'Invalid Clerk token'}, 401);
+  }
+
+  try {
     const now = new Date();
     const [user] = await db
       .insert(users)
@@ -51,7 +58,9 @@ export const requireAuth = createMiddleware<AppBindings>(async (c, next) => {
       })
       .returning();
 
-    if (!user) {
+    if (user) {
+      c.set('user', user);
+    } else {
       const [existingUser] = await db
         .select()
         .from(users)
@@ -59,13 +68,12 @@ export const requireAuth = createMiddleware<AppBindings>(async (c, next) => {
         .limit(1);
       if (!existingUser) return c.json({error: 'Could not resolve user'}, 500);
       c.set('user', existingUser);
-    } else {
-      c.set('user', user);
     }
 
-    await next();
   } catch (error) {
-    console.error('Clerk token verification failed', error);
-    return c.json({error: 'Invalid bearer token'}, 401);
+    console.error('Failed to sync authenticated user', error);
+    return c.json({error: 'Could not sync authenticated user'}, 500);
   }
+
+  await next();
 });

@@ -15,7 +15,7 @@ export default function Login({mode = 'sign-in'}: Readonly<LoginProps>) {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate({to: '/scanner'});
+      navigate({to: '/dashboard'});
     }
   }, [loading, navigate, user]);
 

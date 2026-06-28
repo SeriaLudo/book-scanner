@@ -48,10 +48,10 @@ export default function ExamplePage() {
             <div className="flex flex-wrap items-center gap-2">
               <ThemeToggle />
               <Link
-                to="/"
+                to="/dashboard"
                 className="border border-border rounded px-3 py-1.5 text-sm font-serif hover:bg-surface transition-colors"
               >
-                Back to Login
+                Back to Dashboard
               </Link>
             </div>
           </div>

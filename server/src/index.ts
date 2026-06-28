@@ -6,6 +6,7 @@ import {ZodError} from 'zod';
 import {requireAuth, type AppBindings} from './auth.js';
 import {env} from './env.js';
 import {bookRoutes} from './routes/books.js';
+import {dashboardRoutes} from './routes/dashboard.js';
 import {groupRoutes} from './routes/groups.js';
 
 const app = new Hono<AppBindings>();
@@ -23,6 +24,7 @@ app.get('/health', (c) => c.json({ok: true}));
 
 app.use('/api/*', requireAuth);
 app.route('/api/books', bookRoutes);
+app.route('/api/dashboard', dashboardRoutes);
 app.route('/api/groups', groupRoutes);
 
 app.notFound((c) => c.json({error: 'Not found'}, 404));
