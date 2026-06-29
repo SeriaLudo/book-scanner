@@ -112,6 +112,7 @@ function ScannerInterface() {
       setStatus(
         `Failed to rename group: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
+      throw error;
     }
   }
 
@@ -140,17 +141,6 @@ function ScannerInterface() {
     } catch (error) {
       setStatus(
         `Failed to delete book: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-
-  async function clearGroup(id: string) {
-    try {
-      const booksInGroup = books.filter((b) => b.group_id === id);
-      await Promise.all(booksInGroup.map((book) => updateBook({id: book.id, groupId: null})));
-    } catch (error) {
-      setStatus(
-        `Failed to clear group: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -306,11 +296,11 @@ function ScannerInterface() {
                   </p>
                 </div>
               )}
-              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <select
                   value={condition}
                   onChange={(e) => setCondition(e.target.value as BookCondition)}
-                  className="px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full min-w-0 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent"
                   aria-label="Book condition"
                 >
                   {BOOK_CONDITIONS.map((item) => (
@@ -322,7 +312,7 @@ function ScannerInterface() {
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value as BookFormat)}
-                  className="px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent"
+                  className="w-full min-w-0 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent"
                   aria-label="Book format"
                 >
                   {BOOK_FORMATS.map((item) => (
@@ -331,38 +321,41 @@ function ScannerInterface() {
                     </option>
                   ))}
                 </select>
-                <input
-                  value={manualISBN}
-                  onChange={(e) => setManualISBN(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && manualISBN.trim()) {
-                      const isbn = normalizeISBN(manualISBN.trim());
-                      if (isbn) {
-                        addISBN(isbn);
-                      } else {
-                        setStatus('Invalid ISBN format');
+                <div className="sm:col-span-2 flex min-w-0 flex-col gap-2 sm:flex-row">
+                  <input
+                    value={manualISBN}
+                    onChange={(e) => setManualISBN(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && manualISBN.trim()) {
+                        const isbn = normalizeISBN(manualISBN.trim());
+                        if (isbn) {
+                          addISBN(isbn);
+                        } else {
+                          setStatus('Invalid ISBN format');
+                        }
+                        setManualISBN('');
                       }
-                      setManualISBN('');
-                    }
-                  }}
-                  placeholder="Type or paste ISBN and press Enter"
-                  className="flex-1 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder:text-text-tertiary"
-                />
-                <Button
-                  onPress={() => {
-                    if (manualISBN.trim()) {
-                      const isbn = normalizeISBN(manualISBN.trim());
-                      if (isbn) {
-                        addISBN(isbn);
-                      } else {
-                        setStatus('Invalid ISBN format');
+                    }}
+                    placeholder="Type or paste ISBN and press Enter"
+                    className="min-w-0 flex-1 px-3 py-3 border border-border rounded-lg text-base min-h-[44px] bg-surface text-text-primary font-serif focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent placeholder:text-text-tertiary"
+                  />
+                  <Button
+                    onPress={() => {
+                      if (manualISBN.trim()) {
+                        const isbn = normalizeISBN(manualISBN.trim());
+                        if (isbn) {
+                          addISBN(isbn);
+                        } else {
+                          setStatus('Invalid ISBN format');
+                        }
+                        setManualISBN('');
                       }
-                      setManualISBN('');
-                    }
-                  }}
-                >
-                  Add
-                </Button>
+                    }}
+                    className="sm:shrink-0"
+                  >
+                    Add
+                  </Button>
+                </div>
               </div>
             </Card>
 
@@ -376,7 +369,6 @@ function ScannerInterface() {
                 }
               }}
               onRenameGroup={renameGroup}
-              onClearGroup={clearGroup}
               itemsByGroup={itemsByGroup}
             />
           </section>
