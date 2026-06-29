@@ -67,6 +67,7 @@ jobs:
 
           ssh -i ~/.ssh/azure_vm_key -p "$AZURE_VM_PORT" "$AZURE_VM_USER@$AZURE_VM_HOST" "AZURE_APP_DIR='$AZURE_APP_DIR' bash -s" <<'REMOTE'
             set -euo pipefail
+            export CI=true
 
             cd "$AZURE_APP_DIR"
             git fetch origin main
