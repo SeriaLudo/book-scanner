@@ -1,4 +1,4 @@
-import {SignIn, SignUp} from '@clerk/clerk-react';
+import {SignIn, SignUp} from '@clerk/react';
 import {Link, useNavigate} from '@tanstack/react-router';
 import {useEffect} from 'react';
 import {useAuth} from '../contexts/AuthContext';

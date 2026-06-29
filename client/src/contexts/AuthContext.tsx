@@ -2,7 +2,7 @@ import {
   useAuth as useClerkAuth,
   useClerk,
   useUser,
-} from '@clerk/clerk-react';
+} from '@clerk/react';
 import {createContext, useContext} from 'react';
 
 interface AppUser {
